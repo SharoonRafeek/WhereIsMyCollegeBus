@@ -1,8 +1,7 @@
-import { View, Text } from "react-native";
-import { Link, Redirect } from "expo-router";
+import { Redirect } from "expo-router";
 
 const HomePage = () => {
-  return <Redirect href={"/home"} />;
+  return <Redirect href={"/bus"} />;
 };
 
 export default HomePage;
