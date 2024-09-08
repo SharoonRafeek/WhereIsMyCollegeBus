@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router'; // Import useRouter for navigation
 import React, { useState } from 'react';
-import { FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
 
 export default function BusTrackingApp() {
-  const navigation = useNavigation();
+  const router = useRouter(); // Use router for navigation
+
+  const { width, height } = Dimensions.get('window');
   
   // State to manage search input, filtered bus data, and filtered places
   const [searchQuery, setSearchQuery] = useState('');
@@ -13,7 +16,7 @@ export default function BusTrackingApp() {
   const [filteredPlaces, setFilteredPlaces] = useState([]);
 
   const handleBusCardPress = () => {
-    navigation.navigate('Bus'); // Replace 'Bus' with the actual name of your Bus screen/tab
+    router.push('/bus'); // Navigate to the Bus tab
   };
 
   // Define the bus data with routes, timings, and sub-places
@@ -68,6 +71,20 @@ export default function BusTrackingApp() {
   // Choose the buses to display (either filtered or all)
   const busesToDisplay = searchQuery ? filteredBuses : busData;
 
+  // Render a bus card item
+  const renderBusCard = ({ item }) => (
+    <TouchableOpacity style={styles.busCard} onPress={handleBusCardPress}>
+      <View style={styles.busNumberContainer}>
+        <Ionicons name="bus-outline" style={styles.busIcon} />
+        <Text style={styles.busNumberText}>{item.number}</Text>
+      </View>
+      <View style={styles.busDetails}>
+        <Text style={styles.busRoute}>{item.route}</Text>
+        <Text style={styles.busTiming}>{item.timing}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       {/* Top Section with Gradient */}
@@ -115,18 +132,13 @@ export default function BusTrackingApp() {
         <Text style={styles.availableBusesText}>Available Buses</Text>
 
         {/* Bus Cards */}
-        {busesToDisplay.map((bus, index) => (
-          <TouchableOpacity key={index} style={styles.busCard} onPress={handleBusCardPress}>
-            <View style={styles.busNumberContainer}>
-              <Ionicons name="bus-outline" style={styles.busIcon} />
-              <Text style={styles.busNumberText}>{bus.number}</Text>
-            </View>
-            <View style={styles.busDetails}>
-              <Text style={styles.busRoute}>{bus.route}</Text>
-              <Text style={styles.busTiming}>{bus.timing}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <FlatList
+          data={busesToDisplay}
+          keyExtractor={(item) => item.number}
+          renderItem={renderBusCard}
+          contentContainerStyle={styles.flatListContent}
+          showsVerticalScrollIndicator={false} // Hides the vertical scrollbar
+        />
 
         {/* No buses found */}
         {searchQuery && busesToDisplay.length === 0 && (
@@ -138,6 +150,9 @@ export default function BusTrackingApp() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   topSection: {
     padding: 150, // Adjusted padding
     borderBottomLeftRadius: 25,
@@ -219,6 +234,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   middleSection: {
+    flex: 1, // Ensures the section takes up available space
     padding: 20,
   },
   availableBusesText: {
@@ -278,5 +294,8 @@ const styles = StyleSheet.create({
     color: '#FF0000',
     marginTop: 20,
     textAlign: 'center',
+  },
+  flatListContent: {
+    paddingBottom: 20, // Ensure there's space at the bottom for scrolling
   },
 });
