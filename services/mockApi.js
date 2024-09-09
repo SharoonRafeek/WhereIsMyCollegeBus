@@ -1,35 +1,48 @@
 // mockApiService.js
-let busCoordinates = {
-    latitude: 11.5400, // Starting mock locatio
-    longitude: 75.6200, // Starting mock location
-};
 
-// CEV coordinates
-const CEV_COORDINATES = {
-    latitude: 11.5644,
-    longitude: 75.6508,
-};
+const STOPS = [
+    { name: 'Perambra', coords: { latitude: 11.5640, longitude: 75.7564 } },
+    { name: 'Valiyakode', coords: { latitude: 11.5525, longitude: 75.7459 } },
+    { name: 'Meppayur', coords: { latitude: 11.5250, longitude: 75.7206 } },
+    { name: 'Manhakulam', coords: { latitude: 11.5248, longitude: 75.7046 } },
+    { name: 'Thurayur', coords: { latitude: 11.5239, longitude: 75.6732 } },
+    { name: 'Kurunthodi', coords: { latitude: 11.5586, longitude: 75.6470 } },
+    { name: 'CEV', coords: { latitude: 11.5644, longitude: 75.6508 } },
+];
 
-// Tolerance in degrees (adjust as needed)
-const TOLERANCE = 0.001; // Approximately 100 meters
+let currentStopIndex = 0;
+let progress = 0;
 
-// Function to simulate bus movement
 export const fetchMockLocationData = () => {
-    // Move the bus a small distance towards CEV
-    const latDiff = CEV_COORDINATES.latitude - busCoordinates.latitude;
-    const longDiff = CEV_COORDINATES.longitude - busCoordinates.longitude;
+    const currentStop = STOPS[currentStopIndex];
+    const nextStop = STOPS[currentStopIndex + 1];
 
-    busCoordinates = {
-        latitude: busCoordinates.latitude + latDiff * 0.01,
-        longitude: busCoordinates.longitude + longDiff * 0.01,
-    };
+    if (nextStop) {
+        const latDiff = nextStop.coords.latitude - currentStop.coords.latitude;
+        const lonDiff = nextStop.coords.longitude - currentStop.coords.longitude;
 
-    // Simulate a response with the bus's current coordinates
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve([
-                { latitude: busCoordinates.latitude, longitude: busCoordinates.longitude }
-            ]);
-        }, 500); // Simulate network delay
+        progress += 0.8; // Increased speed for more noticeable movement
+
+        if (progress >= 1) {
+            currentStopIndex++;
+            progress = 0;
+        } else {
+            const currentLat = currentStop.coords.latitude + latDiff * progress;
+            const currentLon = currentStop.coords.longitude + lonDiff * progress;
+
+            return Promise.resolve({
+                coords: { latitude: currentLat, longitude: currentLon },
+                currentStopIndex: currentStopIndex,
+                nextStopIndex: currentStopIndex + 1,
+                progress: progress
+            });
+        }
+    }
+
+    return Promise.resolve({
+        coords: STOPS[currentStopIndex].coords,
+        currentStopIndex: currentStopIndex,
+        nextStopIndex: currentStopIndex,
+        progress: 1
     });
 };
