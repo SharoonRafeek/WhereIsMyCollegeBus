@@ -296,6 +296,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   flatListContent: {
-    paddingBottom: 20, // Ensure there's space at the bottom for scrolling
+    paddingBottom: 50, // Ensure there's space at the bottom for scrolling
   },
 });
