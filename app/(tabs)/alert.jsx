@@ -1,7 +1,7 @@
 import { Montserrat_400Regular, Montserrat_700Bold, useFonts } from '@expo-google-fonts/montserrat';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const notifications = [
@@ -111,7 +111,6 @@ const notifications = [
     icon: 'event',
   },
 ];
-
 const formatTime = (date) => {
   const now = new Date();
   const diffInDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
@@ -132,8 +131,8 @@ const NotificationScreen = () => {
     Montserrat_700Bold,
   });
 
-  const [modalVisible, setModalVisible] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   if (!fontsLoaded) {
     return <ActivityIndicator size="large" color="#0000ff" />;
@@ -144,9 +143,8 @@ const NotificationScreen = () => {
     setModalVisible(true);
   };
 
-  const closeModal = () => {
+  const handleOutsidePress = () => {
     setModalVisible(false);
-    setSelectedNotification(null);
   };
 
   const renderNotificationItem = ({ item }) => (
@@ -185,29 +183,29 @@ const NotificationScreen = () => {
       </View>
 
       <Modal
+        visible={modalVisible}
         animationType="slide"
         transparent={true}
-        visible={modalVisible}
-        onRequestClose={closeModal}
+        onRequestClose={() => setModalVisible(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={closeModal}>
-          <View style={styles.modalContent}>
-            {selectedNotification && (
-              <View style={styles.modalInner}>
-                <View style={styles.modalHeader}>
-                  <View style={styles.modalIconContainer}>
-                    <Icon name={selectedNotification.icon} size={30} color="#FFFFFF" />
-                  </View>
-                  <View style={styles.modalTitleContainer}>
+        <TouchableWithoutFeedback onPress={handleOutsidePress}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                {selectedNotification && (
+                  <>
+                    <View style={styles.iconDetailsContainer}>
+                      <Icon name={selectedNotification.icon} size={50} color="#4B94F7" />
+                    </View>
                     <Text style={styles.modalTitle}>{selectedNotification.title}</Text>
                     <Text style={styles.modalDate}>{formatTime(selectedNotification.date)}</Text>
-                  </View>
-                </View>
-                <Text style={styles.modalDescription}>{selectedNotification.description}</Text>
+                    <Text style={styles.modalDescription}>{selectedNotification.description}</Text>
+                  </>
+                )}
               </View>
-            )}
+            </TouchableWithoutFeedback>
           </View>
-        </Pressable>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );
@@ -293,41 +291,32 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontFamily: 'Montserrat_400Regular',
   },
-  modalBackdrop: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
   },
   modalContent: {
+    width: '90%',
     backgroundColor: 'white',
     borderRadius: 20,
-    width: '90%',
     padding: 20,
+    alignItems: 'center',
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
   },
-  modalInner: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  modalIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#4B94F7',
+  iconDetailsContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
-  },
-  modalTitleContainer: {
-    flex: 1,
+    marginBottom: 15,
   },
   modalTitle: {
     fontSize: 18,
@@ -343,6 +332,8 @@ const styles = StyleSheet.create({
   modalDescription: {
     color: '#666',
     fontFamily: 'Montserrat_400Regular',
+    textAlign: 'center', // Center-align text for better appearance
+    marginTop: 10,
   },
 });
 
