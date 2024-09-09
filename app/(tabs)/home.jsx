@@ -1,29 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router'; // Import useRouter for navigation
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
+import { Dimensions, FlatList, Image, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 export default function BusTrackingApp() {
-  const router = useRouter(); // Use router for navigation
-
+  const router = useRouter();
   const { width, height } = Dimensions.get('window');
-  
-  // State to manage search input, filtered bus data, and filtered places
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredBuses, setFilteredBuses] = useState([]);
   const [filteredPlaces, setFilteredPlaces] = useState([]);
 
   const handleBusCardPress = () => {
-    router.push('/bus'); // Navigate to the Bus tab
+    router.push('/bus');
   };
 
-  // Define the bus data with routes, timings, and sub-places
   const busData = [
-    { number: '01', route: 'Perambra - College', timing: '8:05 AM - 8:45 AM', subPlaces: ['Perambra', 'College','Attakund','Payyoli Angadi','Palachuvad',
-      'Iringath','Meppayur','Anchampeedika',
-    ] },
+    { number: '01', route: 'Perambra - College', timing: '8:05 AM - 8:45 AM', subPlaces: ['Perambra', 'College','Attakund','Payyoli Angadi','Palachuvad','Iringath','Meppayur','Anchampeedika'] },
     { number: '02', route: 'Koyilandi - College', timing: '9:00 AM - 9:45 AM', subPlaces: ['Koyilandi', 'College'] },
     { number: '03', route: 'Koyilandi - College', timing: '10:00 AM - 10:45 AM', subPlaces: ['Koyilandi', 'College'] },
     { number: '04', route: 'Vadakara - College', timing: '11:00 AM - 11:45 AM', subPlaces: ['Vadakara', 'College'] },
@@ -31,17 +25,8 @@ export default function BusTrackingApp() {
     { number: '06', route: 'Payyoli - College', timing: '1:00 PM - 1:45 PM', subPlaces: ['Payyoli', 'College'] },
   ];
 
-  // List of possible places
-  const places = [
-    'Perambra',
-    'Koyilandi',
-    'Vadakara',
-    'Payyoli',
-    'Attakund','Payyoli Angadi','Palachuvad',
-      'Iringath','Meppayur','Anchampeedika',
-  ];
+  const places = ['Perambra', 'Koyilandi', 'Vadakara', 'Payyoli', 'Attakund', 'Payyoli Angadi', 'Palachuvad', 'Iringath', 'Meppayur', 'Anchampeedika'];
 
-  // Function to handle search query changes and filtering
   const handleSearch = (text) => {
     setSearchQuery(text);
     if (text) {
@@ -61,17 +46,14 @@ export default function BusTrackingApp() {
     }
   };
 
-  // Function to handle place selection from suggestions
   const handlePlaceSelect = (place) => {
     setSearchQuery(place);
-    handleSearch(place); // Trigger search with the selected place
-    setFilteredPlaces([]); // Hide suggestions after selection
+    handleSearch(place);
+    setFilteredPlaces([]);
   };
 
-  // Choose the buses to display (either filtered or all)
   const busesToDisplay = searchQuery ? filteredBuses : busData;
 
-  // Render a bus card item
   const renderBusCard = ({ item }) => (
     <TouchableOpacity style={styles.busCard} onPress={handleBusCardPress}>
       <View style={styles.busNumberContainer}>
@@ -86,68 +68,70 @@ export default function BusTrackingApp() {
   );
 
   return (
-    <View style={styles.container}>
-      {/* Top Section with Gradient */}
-      <LinearGradient
-        colors={['#1A81FF', '#0D47A1']}
-        style={styles.topSection}
-      >
-        <Image
-          source={require('../../assets/images/eere.png')}
-          style={styles.footerImage}
-        />
-        <View style={styles.searchBarContainer}>
-          <View style={styles.searchBar}>
-            <Ionicons name="location-outline" style={styles.locationIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter Destination"
-              placeholderTextColor="#B0B0B0"
-              value={searchQuery}
-              onChangeText={handleSearch}
-            />
-            <TouchableOpacity style={styles.searchButton}>
-              <Ionicons name="search-outline" style={styles.searchIcon} />
-            </TouchableOpacity>
-          </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#1A81FF', '#0D47A1']}
+          style={styles.topSection}
+        >
+          <Image
+            source={require('../../assets/images/raah.png')}
+            style={styles.logo}
+          />
+          <Image
+            source={require('../../assets/images/eere.png')}
+            style={styles.footerImage}
+          />
+          <View style={styles.searchBarContainer}>
+            <View style={styles.searchBar}>
+              <Ionicons name="location-outline" style={styles.locationIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter Destination"
+                placeholderTextColor="#B0B0B0"
+                value={searchQuery}
+                onChangeText={handleSearch}
+              />
+              <TouchableOpacity style={styles.searchButton}>
+                <Ionicons name="search-outline" style={styles.searchIcon} />
+              </TouchableOpacity>
+            </View>
 
-          {/* Auto-Suggestions */}
-          {filteredPlaces.length > 0 && (
-            <FlatList
-              data={filteredPlaces}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.suggestionItem} onPress={() => handlePlaceSelect(item)}>
-                  <Text style={styles.suggestionText}>{item}</Text>
-                </TouchableOpacity>
-              )}
-              style={styles.suggestionsList}
-            />
+            {filteredPlaces.length > 0 && (
+              <FlatList
+                data={filteredPlaces}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.suggestionItem} onPress={() => handlePlaceSelect(item)}>
+                    <Text style={styles.suggestionText}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+                style={styles.suggestionsList}
+              />
+            )}
+          </View>
+        </LinearGradient>
+
+        <View style={styles.middleSection}>
+          <Text style={styles.availableBusesText}>Available Buses</Text>
+
+          <FlatList
+            data={busesToDisplay}
+            keyExtractor={(item) => item.number}
+            renderItem={renderBusCard}
+            contentContainerStyle={styles.flatListContent}
+            showsVerticalScrollIndicator={false}
+          />
+
+          {searchQuery && busesToDisplay.length === 0 && (
+            <Text style={styles.noBusesText}>No buses found for "{searchQuery}"</Text>
           )}
         </View>
-      </LinearGradient>
-
-      {/* Middle Section */}
-      <View style={styles.middleSection}>
-        <Text style={styles.availableBusesText}>Available Buses</Text>
-
-        {/* Bus Cards */}
-        <FlatList
-          data={busesToDisplay}
-          keyExtractor={(item) => item.number}
-          renderItem={renderBusCard}
-          contentContainerStyle={styles.flatListContent}
-          showsVerticalScrollIndicator={false} // Hides the vertical scrollbar
-        />
-
-        {/* No buses found */}
-        {searchQuery && busesToDisplay.length === 0 && (
-          <Text style={styles.noBusesText}>No buses found for "{searchQuery}"</Text>
-        )}
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -160,6 +144,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
+  logo: {
+    width: 100,  // Adjust the width as needed
+    height: 100, // Adjust the height as needed
+    resizeMode: 'contain', // Maintain the original aspect ratio
+    marginTop: -100, // Add some spacing below the logo
+  },
+  
   searchBarContainer: {
     width: '100%',
     alignItems: 'center',
