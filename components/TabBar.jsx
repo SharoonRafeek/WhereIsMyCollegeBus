@@ -115,17 +115,16 @@
 
 // export default TabBar;
 
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export function TabBar({ state, descriptors, navigation }) {
     const icon = {
         home: 'home',
         bus: 'directions-bus',
         alert: 'bell',
-        profile: 'user',
+        profile: 'info',
     };
 
     const animatedValues = useRef(state.routes.map(() => new Animated.Value(0))).current;
