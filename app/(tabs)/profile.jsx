@@ -22,7 +22,8 @@ const InfoHubScreen = () => {
   });
 
   if (!fontsLoaded) {
-    return <ActivityIndicator size="large" color="#0000ff" />;
+    return <ActivityIndicator size={40} color="#0000ff" />
+
   }
 
   const renderMenuItem = ({ item }) => (

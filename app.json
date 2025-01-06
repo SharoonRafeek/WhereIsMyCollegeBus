@@ -1,5 +1,6 @@
 {
   "expo": {
+    "newArchEnabled": true,
     "name": "college-bus",
     "slug": "college-bus",
     "version": "1.0.0",
