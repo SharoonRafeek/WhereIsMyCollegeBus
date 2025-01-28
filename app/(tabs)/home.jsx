@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+
 import { Dimensions, FlatList, Image, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 export default function BusTrackingApp() {
@@ -14,6 +15,10 @@ export default function BusTrackingApp() {
 
   const handleBusCardPress = () => {
     router.push('/bus');
+  };
+  const handleBusPassPress = () => {
+    // Handle the action when the bus pass icon is pressed (e.g., navigate to a bus pass page)
+    router.push('/bus-pass');
   };
 
   const busData = [
@@ -74,6 +79,11 @@ export default function BusTrackingApp() {
           colors={['#1A81FF', '#0D47A1']}
           style={styles.topSection}
         >
+        {/* Bus Pass Icon */}
+        <TouchableOpacity onPress={handleBusPassPress} style={styles.busPassIconContainer}>
+            <Ionicons name="card-outline" style={styles.busPassIcon} />
+          </TouchableOpacity>
+
           <Image
             source={require('../../assets/images/raah.png')}
             style={styles.logo}
@@ -143,6 +153,16 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 25,
     alignItems: 'center',
     position: 'relative',
+  },
+  busPassIconContainer: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 2,
+  },
+  busPassIcon: {
+    fontSize: 30,
+    color: '#fff',
   },
   logo: {
     width: 100,  // Adjust the width as needed
