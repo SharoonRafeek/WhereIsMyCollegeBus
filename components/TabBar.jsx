@@ -118,11 +118,12 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import BusPassPage from '../app/(tabs)/bus-pass';
 
 export function TabBar({ state, descriptors, navigation }) {
     const icon = {
         home: 'home',
-        bus: 'directions-bus',
+        Bus: 'directions-bus',
         alert: 'bell',
         profile: 'info',
     };

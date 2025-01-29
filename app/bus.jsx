@@ -3,7 +3,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { fetchMockLocationData } from '../../services/mockApi';
+import { fetchMockLocationData } from '../services/mockApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -103,7 +103,7 @@ const TransitScreen = () => {
                             </TouchableOpacity>
                         </View>
                         <Image
-                            source={require('../../assets/images/raah.png')} // Adjust the path based on your project structure
+                            source={require('../assets/images/raah.png')} // Adjust the path based on your project structure
                             style={styles.logo}
                         />
                     </LinearGradient>
