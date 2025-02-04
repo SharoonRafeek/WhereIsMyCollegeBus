@@ -1,84 +1,97 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+// components/SignupForm.js
+import React, { useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-const SignupScreen = () => {
+const SignupForm = ({ onSignupSubmit, onSwitchToLogin }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleSubmit = () => {
+    onSignupSubmit(name, email, password, confirmPassword); // Add your submission logic here
+  };
+
   return (
-    <LinearGradient colors={["#0f172a", "#f1f5f9"]} style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Sign Up</Text>
-        
-        <TextInput placeholder="Full Name" style={styles.input} placeholderTextColor="#b0b0b0" />
-        <TextInput placeholder="Admission Number" style={styles.input} placeholderTextColor="#b0b0b0" />
-        <TextInput placeholder="Phone Number" style={styles.input} placeholderTextColor="#b0b0b0" keyboardType="phone-pad" />
-        <TextInput placeholder="Email" style={styles.input} placeholderTextColor="#b0b0b0" keyboardType="email-address" />
-        <TextInput placeholder="Password" style={styles.input} placeholderTextColor="#b0b0b0" secureTextEntry />
-        
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Sign Up</Text>
-        </TouchableOpacity>
-        
-        <Text style={styles.footerText}>
-          Already have an account? <Text style={styles.loginText}>Login</Text>
-        </Text>
-      </View>
-    </LinearGradient>
+    <View style={styles.container}>
+      <Text style={styles.formTitle}>Sign Up</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Full Name"
+        value={name}
+        onChangeText={setName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Confirm Password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
+      />
+      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+        <Text style={styles.buttonText}>Sign Up</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.switchButton} onPress={onSwitchToLogin}>
+        <Text style={styles.switchText}>Already have an account? Log In</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: 'center',
+    width: '100%',
     alignItems: 'center',
+    marginTop: 20,
   },
-  card: {
-    backgroundColor: '#fff',
-    padding: 25,
-    borderRadius: 20,
-    width: '85%',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  title: {
+  formTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
   },
   input: {
-    width: '100%',
-    padding: 15,
+    width: '90%',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 10,
-    marginBottom: 15,
-    backgroundColor: '#f8f9fa',
+    borderRadius: 30,
+    marginBottom: 20,
+    fontSize: 16,
   },
   button: {
-    backgroundColor: '#1E90FF',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    width: '100%',
+    backgroundColor: '#1A81FF',
+    paddingVertical: 15,
+    borderRadius: 30,
+    width: '90%',
+    marginBottom: 20,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
-  footerText: {
-    marginTop: 20,
+  switchButton: {
+    marginTop: 10,
+  },
+  switchText: {
+    color: '#1A81FF',
     fontSize: 14,
-    color: '#666',
-  },
-  loginText: {
-    fontWeight: 'bold',
-    color: '#1E90FF',
   },
 });
 
-export default SignupScreen;
+export default SignupForm;
