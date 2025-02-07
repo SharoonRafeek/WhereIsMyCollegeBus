@@ -1,9 +1,8 @@
-// Bus.jsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import MapView, { Marker, PROVIDER_OPENSTREETMAP } from 'react-native-maps';
 import { fetchBusLocation } from '../services/api';
-import * as Network from 'expo-network'; // Add this import
+import * as Network from 'expo-network';
 
 const Bus = () => {
     const [busLocation, setBusLocation] = useState({
@@ -14,21 +13,14 @@ const Bus = () => {
     });
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
-
-    const checkNetwork = async () => {
-        const networkState = await Network.getNetworkStateAsync();
-        return networkState.isConnected && networkState.isInternetReachable;
-    };
+    const [updating, setUpdating] = useState(false);
 
     const updateBusLocation = async () => {
         try {
             setError(null);
-
-            // Add debug logging
-            console.log('Starting bus location update...');
+            setUpdating(true);
 
             const data = await fetchBusLocation();
-            console.log('Received data from API:', data);
 
             if (!data || !Array.isArray(data)) {
                 throw new Error('Invalid data format received');
@@ -40,17 +32,17 @@ const Bus = () => {
                 throw new Error('No active bus data available');
             }
 
-            console.log('Active bus data:', activeBus);
-
             if (activeBus.valid &&
                 typeof activeBus.latitude === 'number' &&
                 typeof activeBus.longitude === 'number' &&
                 activeBus.latitude !== 0 &&
                 activeBus.longitude !== 0) {
 
-                console.log('Updating bus location:', {
+                // Log current location
+                console.log('Current Location:', {
                     latitude: activeBus.latitude,
-                    longitude: activeBus.longitude
+                    longitude: activeBus.longitude,
+                    timestamp: new Date().toLocaleTimeString()
                 });
 
                 setBusLocation(prev => ({
@@ -58,32 +50,36 @@ const Bus = () => {
                     latitude: activeBus.latitude,
                     longitude: activeBus.longitude,
                 }));
-            } else {
-                throw new Error('Invalid bus coordinates received');
             }
         } catch (err) {
-            const errorMessage = `Failed to update location: ${err.message}`;
-            setError(errorMessage);
-            console.error('Location update error:', {
-                message: err.message,
-                name: err.name,
-                stack: err.stack
-            });
+            if (!err.message.includes('aborted')) {
+                setError(`Failed to update location: ${err.message}`);
+                // Log error with location
+                console.error('Location Update Error:', {
+                    error: err.message,
+                    lastKnownLocation: {
+                        latitude: busLocation.latitude,
+                        longitude: busLocation.longitude
+                    }
+                });
+            }
         } finally {
             setLoading(false);
+            setUpdating(false);
         }
     };
 
     useEffect(() => {
         updateBusLocation();
-        const intervalId = setInterval(updateBusLocation, 30000);
+        const intervalId = setInterval(updateBusLocation, 2000);
         return () => clearInterval(intervalId);
     }, []);
 
     if (loading) {
         return (
             <View style={styles.centered}>
-                <Text>Loading map...</Text>
+                <ActivityIndicator size="large" color="#0000ff" />
+                <Text style={styles.loadingText}>Loading map...</Text>
             </View>
         );
     }
@@ -110,6 +106,13 @@ const Bus = () => {
                 />
             </MapView>
 
+            {updating && (
+                <View style={[styles.updatingContainer, { top: error ? 70 : 10 }]}>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <Text style={styles.updatingText}>Updating location...</Text>
+                </View>
+            )}
+
             {error && (
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorText}>{error}</Text>
@@ -132,6 +135,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 16,
+    },
     errorContainer: {
         position: 'absolute',
         top: 10,
@@ -140,10 +147,27 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 0, 0, 0.7)',
         padding: 10,
         borderRadius: 5,
+        zIndex: 2,
     },
     errorText: {
         color: 'white',
         textAlign: 'center',
+    },
+    updatingContainer: {
+        position: 'absolute',
+        left: 10,
+        right: 10,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        padding: 10,
+        borderRadius: 5,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1,
+    },
+    updatingText: {
+        color: 'white',
+        marginLeft: 10,
     },
 });
 
