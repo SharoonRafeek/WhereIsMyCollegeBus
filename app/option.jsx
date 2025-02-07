@@ -1,104 +1,112 @@
-// AuthScreen.js
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import LocationForm from './location'; // Import LocationForm
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  BackHandler,
+  KeyboardAvoidingView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import LocationForm from './location';
 import LoginForm from './login';
 import SignupForm from './signup';
 
 const AuthScreen = () => {
-  const fadeAnim = new Animated.Value(0);
-  const slideAnim = new Animated.Value(0);
-
+  const router = useRouter(); // Use Expo Router
   const [isLogin, setIsLogin] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
   const [isLocation, setIsLocation] = useState(false);
 
   const handleLoginSubmit = (email, password) => {
     console.log('Login', email, password);
-    // Handle login logic, then navigate if successful
   };
 
   const handleSignupSubmit = (name, email, password, confirmPassword) => {
     console.log('Signup', name, email, password, confirmPassword);
-    // After successful signup, slide to location form
     setIsSignup(false);
     setIsLocation(true);
-    Animated.timing(slideAnim, {
-      toValue: -600, // Adjust to slide further down
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
   };
 
   const handleLocationSubmit = (location) => {
     console.log('Location', location);
-    // Handle location logic, then navigate to next screen or complete registration
   };
 
   const handleLoginClick = () => {
     setIsLogin(true);
     setIsSignup(false);
     setIsLocation(false);
-    Animated.timing(slideAnim, {
-      toValue: 0,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
   };
 
   const handleSignupClick = () => {
     setIsSignup(true);
     setIsLogin(false);
     setIsLocation(false);
-    Animated.timing(slideAnim, {
-      toValue: -300, // Adjust for sliding to signup
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
   };
 
+  // Handle back press to navigate to home
+  useEffect(() => {
+    const onBackPress = () => {
+      router.push('/home'); // Navigate to Home screen using Expo Router
+      return true; // Prevent default behavior
+    };
+
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    return () => {
+      BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    };
+  }, []);
+
   return (
-    <LinearGradient colors={['#1A81FF', '#D3E3FC']} style={styles.container}>
-      <View style={styles.headerContainer}>
-        <MaterialIcons name="directions-bus" size={60} color="#1A81FF" style={styles.icon} />
-        <Text style={styles.description}>Get real-time bus tracking and updates for a hassle-free journey</Text>
-      </View>
-
-      <Animated.View style={[styles.formContainer, { transform: [{ translateY: slideAnim }] }]}>
-        {!isLogin && !isSignup && !isLocation && (
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.signupButton} onPress={handleSignupClick}>
-              <Text style={styles.signupButtonText}>Sign Up</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.loginButton} onPress={handleLoginClick}>
-              <Text style={styles.loginButtonText}>Log In</Text>
-            </TouchableOpacity>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <LinearGradient colors={['#1A81FF', '#0D47A1']} style={styles.container}>
+          <View style={styles.headerContainer}>
+            <MaterialIcons name="directions-bus" size={60} color="#1A81FF" style={styles.icon} />
+            <Text style={styles.description}>
+              Get real-time bus tracking and updates for a hassle-free journey
+            </Text>
           </View>
-        )}
 
-        {isLogin && (
-          <LoginForm
-            onLoginSubmit={handleLoginSubmit}
-            onSwitchToSignup={handleSignupClick}
-          />
-        )}
+          <View style={styles.formContainer}>
+            {!isLogin && !isSignup && !isLocation && (
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity style={styles.signupButton} onPress={handleSignupClick}>
+                  <Text style={styles.signupButtonText}>Sign Up</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.loginButton} onPress={handleLoginClick}>
+                  <Text style={styles.loginButtonText}>Log In</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-        {isSignup && (
-          <SignupForm
-            onSignupSubmit={handleSignupSubmit}
-            onSwitchToLogin={handleLoginClick}
-          />
-        )}
+            {isLogin && (
+              <LoginForm
+                onLoginSubmit={handleLoginSubmit}
+                onSwitchToSignup={handleSignupClick}
+              />
+            )}
 
-        {isLocation && (
-          <LocationForm
-            onLocationSubmit={handleLocationSubmit}
-          />
-        )}
-      </Animated.View>
-    </LinearGradient>
+            {isSignup && (
+              <SignupForm
+                onSignupSubmit={handleSignupSubmit}
+                onSwitchToLogin={handleLoginClick}
+              />
+            )}
+
+            {isLocation && (
+              <LocationForm
+                onLocationSubmit={handleLocationSubmit}
+              />
+            )}
+          </View>
+        </LinearGradient>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -143,7 +151,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 200,
   },
   signupButton: {
     backgroundColor: '#1A81FF',

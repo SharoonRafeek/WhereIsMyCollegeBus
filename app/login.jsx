@@ -1,80 +1,134 @@
-// components/LoginForm.js
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Keyboard,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
+import { auth } from './firebaseConfig'; // Import Firebase auth
 
-const LoginForm = ({ onLoginSubmit, onSwitchToSignup }) => {
+const LoginForm = ({ onSwitchToSignup }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = () => {
-    onLoginSubmit(email, password); // You can add more logic here
+  const handleSubmit = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter email and password.");
+      return;
+    }
+
+    try {
+      // 🔹 Sign in with Firebase Authentication
+      await signInWithEmailAndPassword(auth, email, password);
+      Alert.alert("Success", "Logged in successfully!");
+      
+      // Reset form
+      setEmail('');
+      setPassword('');
+    } catch (error) {
+      Alert.alert("Login Failed", error.message);
+    }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.formTitle}>Log In</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Log In</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.switchButton} onPress={onSwitchToSignup}>
-        <Text style={styles.switchText}>Don't have an account? Sign Up</Text>
-      </TouchableOpacity>
-    </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <View style={styles.inner}>
+          <FormContent
+            email={email} setEmail={setEmail}
+            password={password} setPassword={setPassword}
+            handleSubmit={handleSubmit}
+            onSwitchToSignup={onSwitchToSignup}
+          />
+        </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
+const FormContent = ({ email, setEmail, password, setPassword, handleSubmit, onSwitchToSignup }) => (
+  <View style={styles.formContainer}>
+    <Text style={styles.formTitle}>Login</Text>
+    <TextInput
+      style={styles.input}
+      placeholder="Email"
+      value={email}
+      onChangeText={setEmail}
+      keyboardType="email-address"
+    />
+    <TextInput
+      style={styles.input}
+      placeholder="Password"
+      value={password}
+      onChangeText={setPassword}
+      secureTextEntry
+    />
+    <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+      <Text style={styles.buttonText}>Login</Text>
+    </TouchableOpacity>
+    <TouchableOpacity onPress={onSwitchToSignup}>
+      <Text style={styles.switchText}>Don't have an account? Sign Up</Text>
+    </TouchableOpacity>
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
+    flex: 1,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    paddingHorizontal: 20,
+  },
+  inner: {
+    width: '100%',
+    maxWidth: 400,
+  },
+  formContainer: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    paddingVertical: 20,
   },
   formTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 30,
+    textAlign: 'center',
+    color: '#333',
   },
   input: {
-    width: '90%',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 30,
-    marginBottom: 20,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 16,
     fontSize: 16,
+    width: '100%',
+    minWidth: 300,
   },
   button: {
-    backgroundColor: '#1A81FF',
-    paddingVertical: 15,
-    borderRadius: 30,
-    width: '90%',
-    marginBottom: 20,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 16,
+    width: '100%',
+    minWidth: 300,
   },
   buttonText: {
-    fontSize: 18,
+    color: 'white',
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  switchButton: {
-    marginTop: 10,
+    textAlign: 'center',
   },
   switchText: {
-    color: '#1A81FF',
+    color: '#007AFF',
+    textAlign: 'center',
+    marginTop: 10,
     fontSize: 14,
   },
 });
