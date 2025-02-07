@@ -31,12 +31,13 @@
         "cleartextTrafficPermitted": true,
         "trustAnchors": [
           {
-            "certificates": ["system"]
+            "certificates": [
+              "system"
+            ]
           }
         ]
       },
       "usesCleartextTraffic": true
-
     },
     "web": {
       "bundler": "metro",
@@ -49,6 +50,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "f4bf3799-4c4b-43b9-b550-bbfb7c7ddd07"
+      }
     }
   }
 }
