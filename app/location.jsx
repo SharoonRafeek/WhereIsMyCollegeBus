@@ -1,27 +1,40 @@
 // components/LocationForm.js
 import React, { useState } from 'react';
-import { Animated, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
+import * as ImagePicker from 'react-native-image-picker';
 
 const LocationForm = ({ onLocationSubmit }) => {
   const [location, setLocation] = useState('');
+  const [photo, setPhoto] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
 
   const locationPages = [
     {
-      title: 'Select Your Bus Stop',
+      title: 'Choose your location',
       description: 'Choose the bus stop from the list below.',
-      options: ['Stop A', 'Stop B', 'Stop C', 'Stop D'],
+      options: ['Koyilandi', 'Payyoli', 'Perambra', 'Vadakara'],
     },
     {
-      title: 'Select Your Bus Route',
-      description: 'Pick a bus route that suits your destination.',
-      options: ['Route 1', 'Route 2', 'Route 3', 'Route 4'],
+      title: 'How often do you need bus service?',
+      description: 'Select a preferred pass for your journey.',
+      options: ['Daily Pass', 'Weekend Pass'],
     },
     {
-      title: 'Choose Your Time Slot',
-      description: 'Select a preferred time for your journey.',
-      options: ['Morning', 'Afternoon', 'Evening', 'Night'],
+      title: 'Engineering Branch',
+    description: 'Select your branch of study',
+    options: ['CSE', 'ECE', 'EEE', 'ME', 'CE', 'IT'],
+    },
+    {
+      title: 'Current Semester',
+      description: 'Which semester are you studying in?',
+      options: ['1st Semester', '2nd Semester', '3rd Semester', '4th Semester', 
+                '5th Semester', '6th Semester', '7th Semester', '8th Semester'],
+    },
+    {
+      title: 'Upload Your Photo for Verification',
+      description: 'Please upload a passport-sized photo.',
+      options: [],
     },
   ];
 
@@ -58,7 +71,18 @@ const LocationForm = ({ onLocationSubmit }) => {
   };
 
   const handleSubmit = () => {
-    onLocationSubmit(location);
+    onLocationSubmit({ location, photo });
+  };
+
+  const pickImage = () => {
+    ImagePicker.launchImageLibrary(
+      { mediaType: 'photo', quality: 1 },
+      (response) => {
+        if (!response.didCancel && !response.error) {
+          setPhoto(response.assets[0].uri);
+        }
+      }
+    );
   };
 
   const renderOption = ({ item }) => (
@@ -94,21 +118,26 @@ const LocationForm = ({ onLocationSubmit }) => {
             <Text style={styles.description}>{locationPages[currentPage].description}</Text>
           </View>
 
-          <FlatList
-            data={locationPages[currentPage].options}
-            renderItem={renderOption}
-            keyExtractor={(item, index) => index.toString()}
-            contentContainerStyle={styles.optionsList}
-          />
+          {currentPage === 4 ? (
+            <View style={styles.uploadContainer}>
+              {photo && <Image source={{ uri: photo }} style={styles.imagePreview} />}
+              <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
+                <Text style={styles.uploadButtonText}>{photo ? 'Change Photo' : 'Upload Photo'}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <FlatList
+              data={locationPages[currentPage].options}
+              renderItem={renderOption}
+              keyExtractor={(item, index) => index.toString()}
+              contentContainerStyle={styles.optionsList}
+            />
+          )}
         </Animated.View>
       </PanGestureHandler>
 
-      {/* Fixed Continue/Submit Button */}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleNext}
-        >
+        <TouchableOpacity style={styles.continueButton} onPress={handleNext}>
           <Text style={styles.continueButtonText}>
             {currentPage === locationPages.length - 1 ? 'Submit' : 'Continue'}
           </Text>
@@ -129,7 +158,7 @@ const styles = StyleSheet.create({
   paginationContainer: {
     flexDirection: 'row',
     position: 'absolute',
-    top: 5, // Dots are now positioned at the top
+    top: 5,
     justifyContent: 'center',
     width: '100%',
   },
@@ -148,8 +177,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
     alignItems: 'center',
-    paddingBottom: 30, // Ensure there's space for the button at the bottom
-    marginTop: 40, // Adjusted for spacing between dots and content
+    paddingBottom: 30,
+    marginTop: 40,
   },
   header: {
     width: '100%',
@@ -197,11 +226,32 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#1A81FF',
   },
+  uploadContainer: {
+    alignItems: 'center',
+  },
+  imagePreview: {
+    width: 150,
+    height: 150,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  uploadButton: {
+    backgroundColor: '#1A81FF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    alignItems: 'center',
+  },
+  uploadButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   buttonContainer: {
     width: '100%',
     alignItems: 'center',
     position: 'absolute',
-    bottom: 5, // Button remains fixed at the bottom
+    bottom: 5,
   },
   continueButton: {
     backgroundColor: '#1A81FF',
@@ -209,18 +259,11 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     width: '90%',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#1A81FF',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
   },
   continueButtonText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
-    textAlign: 'center',
   },
 });
 

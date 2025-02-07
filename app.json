@@ -22,9 +22,21 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "INTERNET"
+        "INTERNET",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
       ],
-      "package": "com.anonymous.collegebus"
+      "package": "com.anonymous.collegebus",
+      "networkSecurityConfig": {
+        "cleartextTrafficPermitted": true,
+        "trustAnchors": [
+          {
+            "certificates": ["system"]
+          }
+        ]
+      },
+      "usesCleartextTraffic": true
+
     },
     "web": {
       "bundler": "metro",
