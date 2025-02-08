@@ -4,7 +4,6 @@ import { Buffer } from 'buffer'; // Add Buffer for base64 encoding
 const USERNAME = '9961446758';
 const PASSWORD = '123456';
 
-// Encode credentials using Buffer
 const basicAuth = Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
 
 export const fetchBusLocation = async () => {
@@ -27,7 +26,6 @@ export const fetchBusLocation = async () => {
         } catch (axiosError) {
             console.log('Axios error, trying fetch...');
 
-            // Use HTTPS and correct base64 encoding
             const fetchResponse = await fetch(fullUrl, {
                 headers: {
                     'Accept': 'application/json',
