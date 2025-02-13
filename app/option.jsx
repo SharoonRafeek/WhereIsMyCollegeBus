@@ -1,16 +1,17 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   BackHandler,
+  Image,
   KeyboardAvoidingView,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import logo from '../assets/images/raah.png'; // Adjust the path as necessary
+import { getAuthToken, storeAuthToken } from '../utils/authUtils';
 import LocationForm from './location';
 import LoginForm from './login';
 import SignupForm from './signup';
@@ -20,19 +21,44 @@ const AuthScreen = () => {
   const [isLogin, setIsLogin] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
   const [isLocation, setIsLocation] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
 
-  const handleLoginSubmit = (email, password) => {
+  useEffect(() => {
+    const checkAuthToken = async () => {
+      const token = await getAuthToken();
+      if (token) {
+        router.push('/home');
+      }
+    };
+    checkAuthToken();
+  }, []);
+
+  const handleLoginSubmit = async (email, password) => {
     console.log('Login', email, password);
+    // Simulate API call and get token
+    const token = 'dummy-auth-token';
+    await storeAuthToken(token);
+    // Navigate to home or another screen
+    router.push('/home');
   };
 
-  const handleSignupSubmit = (name, email, password, confirmPassword) => {
-    console.log('Signup', name, email, password, confirmPassword);
+  const handleSignupSubmit = async (name, email, password) => {
+    console.log('Signup', name, email, password);
+    // Simulate API call and get token
+    const token = 'dummy-auth-token';
+    await storeAuthToken(token);
     setIsSignup(false);
     setIsLocation(true);
   };
 
-  const handleLocationSubmit = (location) => {
+  const handleLocationSubmit = async (location) => {
     console.log('Location', location);
+    // Simulate API call and get token
+    const token = 'dummy-auth-token';
+    await storeAuthToken(token);
+    console.log('Signup complete');
+    // Navigate to home or another screen
+    router.push('/home');
   };
 
   const handleLoginClick = () => {
@@ -45,6 +71,20 @@ const AuthScreen = () => {
     setIsSignup(true);
     setIsLogin(false);
     setIsLocation(false);
+  };
+
+  const handleSignupSuccess = () => {
+    setIsSignup(false);
+    setIsLocation(true);
+  };
+
+  const handleBackbutton = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    } else {
+      setIsLocation(false);
+      setIsSignup(true);
+    }
   };
 
   // Handle back press to navigate to home
@@ -63,49 +103,53 @@ const AuthScreen = () => {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <LinearGradient colors={['#1A81FF', '#0D47A1']} style={styles.container}>
-          <View style={styles.headerContainer}>
-            <MaterialIcons name="directions-bus" size={60} color="#1A81FF" style={styles.icon} />
-            <Text style={styles.description}>
-              Get real-time bus tracking and updates for a hassle-free journey
-            </Text>
-          </View>
+      <View style={[styles.container, { backgroundColor: '#1B1B1B' }]}>
+        <View style={styles.headerContainer}>
+          <Image source={logo} style={styles.logo} />
+        </View>
 
-          <View style={styles.formContainer}>
-            {!isLogin && !isSignup && !isLocation && (
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity style={styles.signupButton} onPress={handleSignupClick}>
-                  <Text style={styles.signupButtonText}>Sign Up</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.loginButton} onPress={handleLoginClick}>
-                  <Text style={styles.loginButtonText}>Log In</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+        <View style={styles.formContainer}>
+          {!isLogin && !isSignup && !isLocation && (
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity style={styles.signupButton} onPress={handleSignupClick}>
+                <Text style={styles.signupButtonText}>Sign Up</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.loginButton} onPress={handleLoginClick}>
+                <Text style={styles.loginButtonText}>Log In</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-            {isLogin && (
-              <LoginForm
-                onLoginSubmit={handleLoginSubmit}
-                onSwitchToSignup={handleSignupClick}
-              />
-            )}
+          {isLogin && (
+            <LoginForm
+              onLoginSubmit={handleLoginSubmit}
+              onSwitchToSignup={handleSignupClick}
+            />
+          )}
 
-            {isSignup && (
-              <SignupForm
-                onSignupSubmit={handleSignupSubmit}
-                onSwitchToLogin={handleLoginClick}
-              />
-            )}
+          {isSignup && (
+            <SignupForm
+              onSwitchToLogin={handleLoginClick}
+              onSignupSuccess={handleSignupSuccess}
+            />
+          )}
 
-            {isLocation && (
+          {isLocation && (
+            <>
               <LocationForm
                 onLocationSubmit={handleLocationSubmit}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
               />
-            )}
-          </View>
-        </LinearGradient>
-      </ScrollView>
+              {currentPage > 0 && (
+                <TouchableOpacity style={styles.backButton} onPress={handleBackbutton}>
+                  <MaterialIcons name="arrow-back" size={24} color="#272727" />
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+        </View>
+      </View>
     </KeyboardAvoidingView>
   );
 };
@@ -122,15 +166,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
-  icon: {
-    marginBottom: 20,
-  },
-  description: {
-    fontSize: 16,
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 20,
+  logo: {
+    width: 120,
+    height: 120,
+    marginTop: 10,
+    justifyContent: 'center',
+    resizeMode: 'contain',
   },
   formContainer: {
     backgroundColor: '#FFFFFF',
@@ -154,13 +195,13 @@ const styles = StyleSheet.create({
     marginTop: 200,
   },
   signupButton: {
-    backgroundColor: '#1A81FF',
+    backgroundColor: '#1B1B1B',
     paddingVertical: 15,
     borderRadius: 30,
     alignItems: 'center',
     width: '90%',
     marginBottom: 20,
-    shadowColor: '#1A81FF',
+    shadowColor: '#1B1B1B',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -173,7 +214,7 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     borderWidth: 2,
-    borderColor: '#1A81FF',
+    borderColor: '#1B1B1B',
     paddingVertical: 15,
     borderRadius: 30,
     alignItems: 'center',
@@ -182,7 +223,20 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1A81FF',
+    color: '#1B1B1B',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 10,
+    zIndex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  backButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

@@ -1,5 +1,7 @@
+import { useRouter } from 'expo-router'; // Import useRouter from expo-router
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import React, { useState } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore'; // Import Firestore methods
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -10,26 +12,57 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { auth } from './firebaseConfig'; // Import Firebase auth
+import { checkLoginStatus, storeAuthToken } from '../utils/authUtils'; // Import auth utils
+import { auth, firestore } from './firebaseConfig'; // Import Firebase auth and firestore
 
 const LoginForm = ({ onSwitchToSignup }) => {
-  const [email, setEmail] = useState('');
+  const [admissionNumber, setAdmissionNumber] = useState('');
   const [password, setPassword] = useState('');
+  const router = useRouter(); // Initialize router
+
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const isLoggedIn = await checkLoginStatus();
+      if (isLoggedIn) {
+        router.push('/home');
+      }
+    };
+    checkAuthStatus();
+  }, []);
 
   const handleSubmit = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter email and password.");
+    if (!admissionNumber || !password) {
+      Alert.alert("Error", "Please enter admission number and password.");
       return;
     }
 
     try {
+      // Capitalize the admission number
+      const capitalizedAdmissionNumber = admissionNumber.toUpperCase();
+
+      // 🔹 Retrieve uid using admission number
+      const userQuerySnapshot = await getDocs(query(collection(firestore, 'users'), where('admissionNumber', '==', capitalizedAdmissionNumber)));
+
+      if (userQuerySnapshot.empty) {
+        throw new Error("User not found");
+      }
+
+      const userDoc = userQuerySnapshot.docs[0];
+      const { email } = userDoc.data();
+
       // 🔹 Sign in with Firebase Authentication
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const token = await userCredential.user.getIdToken();
+      await storeAuthToken(token);
+
       Alert.alert("Success", "Logged in successfully!");
       
       // Reset form
-      setEmail('');
+      setAdmissionNumber('');
       setPassword('');
+      
+      // Navigate to home page
+      router.push('/home');
     } catch (error) {
       Alert.alert("Login Failed", error.message);
     }
@@ -40,7 +73,7 @@ const LoginForm = ({ onSwitchToSignup }) => {
       <View style={styles.container}>
         <View style={styles.inner}>
           <FormContent
-            email={email} setEmail={setEmail}
+            admissionNumber={admissionNumber} setAdmissionNumber={setAdmissionNumber}
             password={password} setPassword={setPassword}
             handleSubmit={handleSubmit}
             onSwitchToSignup={onSwitchToSignup}
@@ -51,15 +84,14 @@ const LoginForm = ({ onSwitchToSignup }) => {
   );
 };
 
-const FormContent = ({ email, setEmail, password, setPassword, handleSubmit, onSwitchToSignup }) => (
+const FormContent = ({ admissionNumber, setAdmissionNumber, password, setPassword, handleSubmit, onSwitchToSignup }) => (
   <View style={styles.formContainer}>
     <Text style={styles.formTitle}>Login</Text>
     <TextInput
       style={styles.input}
-      placeholder="Email"
-      value={email}
-      onChangeText={setEmail}
-      keyboardType="email-address"
+      placeholder="Admission Number"
+      value={admissionNumber}
+      onChangeText={setAdmissionNumber}
     />
     <TextInput
       style={styles.input}
@@ -112,7 +144,7 @@ const styles = StyleSheet.create({
     minWidth: 300,
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#1B1B1B',
     borderRadius: 8,
     padding: 15,
     marginBottom: 16,
@@ -126,7 +158,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   switchText: {
-    color: '#007AFF',
+    color: '#272727',
     textAlign: 'center',
     marginTop: 10,
     fontSize: 14,
