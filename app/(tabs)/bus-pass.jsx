@@ -1,20 +1,19 @@
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Button, StyleSheet, Text, View } from "react-native";
+import { checkLoginStatus, removeAuthToken } from "../../utils/authUtils";
 
 const NavigationScreen = () => {
   const router = useRouter();
   const [isSignedIn, setIsSignedIn] = useState(null); // Start with null to indicate loading state
 
   useEffect(() => {
-    // Check user's login status here
-    // Example: You could fetch this value from AsyncStorage or Context
-    const checkLoginStatus = () => {
-      const user = null; // Replace with your method to get user status (e.g., AsyncStorage)
-      setIsSignedIn(user !== null);
+    const checkStatus = async () => {
+      const signedIn = await checkLoginStatus();
+      setIsSignedIn(signedIn);
     };
 
-    checkLoginStatus();
+    checkStatus();
   }, []);
 
   useEffect(() => {
@@ -23,6 +22,11 @@ const NavigationScreen = () => {
       router.push("/option");
     }
   }, [isSignedIn]);
+
+  const handleLogout = async () => {
+    await removeAuthToken();
+    setIsSignedIn(false);
+  };
 
   if (isSignedIn === null) {
     // While checking the sign-in status, show a loading indicator
@@ -41,7 +45,8 @@ const NavigationScreen = () => {
   return (
     <View style={styles.container}>
       {/* Content for signed-in users */}
-      <Text>Bus Pass</Text>
+      <Text>Pass Generated</Text>
+      <Button title="Logout" onPress={handleLogout} />
     </View>
   );
 };

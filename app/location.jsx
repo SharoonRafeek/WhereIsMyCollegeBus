@@ -1,62 +1,36 @@
-// components/LocationForm.js
+import { doc, setDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
-import { Animated, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
+import { Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as ImagePicker from 'react-native-image-picker';
+import { auth, firestore } from './firebaseConfig'; // Import auth & firestore
 
-const LocationForm = ({ onLocationSubmit }) => {
-  const [location, setLocation] = useState('');
+const locationPages = [
+  {
+    title: 'Choose your location',
+    options: ['Koyilandi', 'Payyoli', 'Perambra', 'Vadakara'],
+  },
+  {
+    title: 'How often do you need bus service?',
+    options: ['Daily Pass', 'Weekend Pass'],
+  },
+  {
+    title: 'Engineering Branch',
+    options: ['CSE', 'ECE', 'EEE', 'MCA', 'CE', 'IT'],
+  },
+  {
+    title: 'Current Semester',
+    options: ['1st Year', '2nd Year', '3rd Year', '4th Year'], 
+  },
+  {
+    title: 'Upload Your Photo for Verification',
+    options: [],
+  },
+];
+
+const LocationForm = ({ onLocationSubmit, currentPage, setCurrentPage }) => {
+  const [selectedOptions, setSelectedOptions] = useState(Array(locationPages.length).fill(''));
   const [photo, setPhoto] = useState(null);
-  const [currentPage, setCurrentPage] = useState(0);
-
-  const locationPages = [
-    {
-      title: 'Choose your location',
-      description: 'Choose the bus stop from the list below.',
-      options: ['Koyilandi', 'Payyoli', 'Perambra', 'Vadakara'],
-    },
-    {
-      title: 'How often do you need bus service?',
-      description: 'Select a preferred pass for your journey.',
-      options: ['Daily Pass', 'Weekend Pass'],
-    },
-    {
-      title: 'Engineering Branch',
-    description: 'Select your branch of study',
-    options: ['CSE', 'ECE', 'EEE', 'ME', 'CE', 'IT'],
-    },
-    {
-      title: 'Current Semester',
-      description: 'Which semester are you studying in?',
-      options: ['1st Semester', '2nd Semester', '3rd Semester', '4th Semester', 
-                '5th Semester', '6th Semester', '7th Semester', '8th Semester'],
-    },
-    {
-      title: 'Upload Your Photo for Verification',
-      description: 'Please upload a passport-sized photo.',
-      options: [],
-    },
-  ];
-
-  const translateX = new Animated.Value(0);
-  const swipeGestureHandler = Animated.event(
-    [{ nativeEvent: { translationX: translateX } }],
-    { useNativeDriver: true }
-  );
-
-  const handleGestureEnd = (event) => {
-    const { translationX } = event.nativeEvent;
-    if (translationX < -150 && currentPage < locationPages.length - 1) {
-      setCurrentPage(currentPage + 1);
-    } else if (translationX > 150 && currentPage > 0) {
-      setCurrentPage(currentPage - 1);
-    }
-
-    Animated.spring(translateX, {
-      toValue: 0,
-      useNativeDriver: true,
-    }).start();
-  };
 
   const handleNext = () => {
     if (currentPage < locationPages.length - 1) {
@@ -67,11 +41,30 @@ const LocationForm = ({ onLocationSubmit }) => {
   };
 
   const handleOptionSelect = (option) => {
-    setLocation(option);
+    const newSelectedOptions = [...selectedOptions];
+    newSelectedOptions[currentPage] = option;
+    setSelectedOptions(newSelectedOptions);
   };
 
-  const handleSubmit = () => {
-    onLocationSubmit({ location, photo });
+  const handleSubmit = async () => {
+    try {
+      const user = auth.currentUser; // Get the current authenticated user
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDoc(userDocRef, {
+        passDetails: {
+          selectedOptions,
+          photo,
+        }
+      }, { merge: true });
+
+      onLocationSubmit({ selectedOptions, photo });
+    } catch (error) {
+      Alert.alert("Error", error.message);
+    }
   };
 
   const pickImage = () => {
@@ -85,17 +78,28 @@ const LocationForm = ({ onLocationSubmit }) => {
     );
   };
 
-  const renderOption = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.optionButton,
-        location === item && styles.selectedOption,
-      ]}
-      onPress={() => handleOptionSelect(item)}
-    >
-      <Text style={styles.optionText}>{item}</Text>
-    </TouchableOpacity>
-  );
+  const renderOption = ({ item }) => {
+    const isEngineeringBranch = locationPages[currentPage].title === 'Engineering Branch';
+    const isSelected = selectedOptions[currentPage] === item;
+    return (
+      <TouchableOpacity
+        style={[
+          isEngineeringBranch ? styles.engineeringOptionButton : styles.optionButton,
+          isSelected && styles.selectedOption,
+        ]}
+        onPress={() => handleOptionSelect(item)}
+      >
+        <Text
+          style={[
+            isEngineeringBranch ? styles.engineeringOptionText : styles.optionText,
+            isSelected && styles.selectedOptionText,
+          ]}
+        >
+          {item}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -111,30 +115,45 @@ const LocationForm = ({ onLocationSubmit }) => {
         ))}
       </View>
 
-      <PanGestureHandler onGestureEvent={swipeGestureHandler} onHandlerStateChange={handleGestureEnd}>
-        <Animated.View style={[styles.innerContainer, { transform: [{ translateX }] }]}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{locationPages[currentPage].title}</Text>
-            <Text style={styles.description}>{locationPages[currentPage].description}</Text>
-          </View>
+      <View style={currentPage === 2 ? styles.engineeringInnerContainer : styles.innerContainer}>
+        <View style={styles.header}>
+          <Text style={styles.title}>{locationPages[currentPage].title}</Text>
+          <Text style={styles.description}>{locationPages[currentPage].description}</Text>
+        </View>
 
-          {currentPage === 4 ? (
-            <View style={styles.uploadContainer}>
-              {photo && <Image source={{ uri: photo }} style={styles.imagePreview} />}
-              <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-                <Text style={styles.uploadButtonText}>{photo ? 'Change Photo' : 'Upload Photo'}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <FlatList
-              data={locationPages[currentPage].options}
-              renderItem={renderOption}
-              keyExtractor={(item, index) => index.toString()}
-              contentContainerStyle={styles.optionsList}
-            />
-          )}
-        </Animated.View>
-      </PanGestureHandler>
+        {currentPage === 4 ? (
+          <View style={styles.uploadContainer}>
+            {photo && <Image source={{ uri: photo }} style={styles.imagePreview} />}
+            <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
+              <Text style={styles.uploadButtonText}>{photo ? 'Change Photo' : 'Upload Photo'}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : currentPage === 2 ? (
+          <FlatList
+            data={locationPages[currentPage].options}
+            renderItem={renderOption}
+            keyExtractor={(item, index) => index.toString()}
+            contentContainerStyle={styles.optionsList}
+            numColumns={2}
+            key="two-column"
+          />
+        ) : (
+          locationPages[currentPage].options.map((option, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.optionButton,
+                selectedOptions[currentPage] === option && styles.selectedOption,
+              ]}
+              onPress={() => handleOptionSelect(option)}
+            >
+              <Text style={[styles.optionText, selectedOptions[currentPage] === option && styles.selectedOptionText]}>
+                {option}
+              </Text>
+            </TouchableOpacity>
+          ))
+        )}
+      </View>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.continueButton} onPress={handleNext}>
@@ -152,13 +171,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: '#fff', // Changed to match signup.jsx
     paddingHorizontal: 20,
   },
   paginationContainer: {
     flexDirection: 'row',
     position: 'absolute',
-    top: 5,
+    top: 3,
     justifyContent: 'center',
     width: '100%',
   },
@@ -170,15 +189,23 @@ const styles = StyleSheet.create({
     margin: 5,
   },
   activeDot: {
-    backgroundColor: '#1A81FF',
+    backgroundColor: '#272727',
   },
   innerContainer: {
+    flex: 1,
+    justifyContent: 'center', // Changed to align contents to the top
+    width: '100%',
+    alignItems: 'center',
+    paddingBottom: 50,
+    marginTop: 5,
+  },
+  engineeringInnerContainer: {
     flex: 1,
     justifyContent: 'center',
     width: '100%',
     alignItems: 'center',
-    paddingBottom: 30,
-    marginTop: 40,
+    paddingBottom: 10,
+    marginTop: 90,
   },
   header: {
     width: '100%',
@@ -188,43 +215,67 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#1A81FF',
-    marginBottom: 10,
+    color: '#272727',
+    marginBottom: 5,
     textAlign: 'center',
   },
   description: {
     fontSize: 16,
     color: '#333',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: -10,
     paddingHorizontal: 20,
   },
   optionsList: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
   },
   optionButton: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 25,
-    marginBottom: 20,
-    width: '90%',
+    backgroundColor: '#f5f5f5', // Changed to match signup.jsx
+    borderRadius: 8, // Added to match signup.jsx
+    padding: 15,
+    marginBottom: 16,
+    fontSize: 16,
+    width: '100%',
+    minWidth: 300,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1A81FF',
+    shadowColor: '#272727',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
   },
+  engineeringOptionButton: {
+    backgroundColor: '#f5f5f5', // Changed to match signup.jsx
+    borderRadius: 8, // Added to match signup.jsx
+    padding: 15,
+    marginBottom: 16,
+    fontSize: 16,
+    width: '48%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#272727',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+    marginHorizontal: '1%', // Adjusted margin for spacing between columns
+  },
   selectedOption: {
-    backgroundColor: '#1A81FF',
+    backgroundColor: '#272727',
+  },
+  selectedOptionText: {
+    color: '#FFFFFF',
   },
   optionText: {
     fontSize: 18,
-    color: '#1A81FF',
+    color: '#272727',
+  },
+  engineeringOptionText: {
+    fontSize: 18,
+    color: '#272727', // Dark cyan text color
   },
   uploadContainer: {
     alignItems: 'center',
@@ -236,10 +287,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   uploadButton: {
-    backgroundColor: '#1A81FF',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
+    backgroundColor: '#272727',
+    borderRadius: 8,
+    padding: 15,
+    width: '100%',
+    minWidth: 300,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   uploadButtonText: {
@@ -254,7 +307,7 @@ const styles = StyleSheet.create({
     bottom: 5,
   },
   continueButton: {
-    backgroundColor: '#1A81FF',
+    backgroundColor: '#272727', // Changed to match signup.jsx
     paddingVertical: 16,
     borderRadius: 30,
     width: '90%',
@@ -264,6 +317,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  formContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 30,
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+    height: '70%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
 });
 
