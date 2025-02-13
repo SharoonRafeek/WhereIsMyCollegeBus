@@ -12,17 +12,8 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
   const [password, setPassword] = useState('');
 
   const handleSubmit = async () => {
-    const admissionNumberPattern = /^[0-9]{2}[B][0-9]{3}$/;
-
     if (!fullName || !admissionNumber || !email || !phoneNumber || !password) {
       Alert.alert("Error", "All fields are required!");
-      return;
-    }
-
-    const formattedAdmissionNumber = admissionNumber.toUpperCase();
-
-    if (!admissionNumberPattern.test(formattedAdmissionNumber)) {
-      Alert.alert("Error", "Admission number must be in the format YYBNNN.");
       return;
     }
 
@@ -36,7 +27,7 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
       await setDoc(userDocRef, {
         uid: user.uid,
         fullName,
-        admissionNumber: formattedAdmissionNumber,
+        admissionNumber,
         email,
         phoneNumber,
       });
@@ -106,9 +97,9 @@ const styles = StyleSheet.create({
   formContainer: { width: '100%', maxWidth: 400, alignSelf: 'center', paddingBottom: 80, paddingVertical: 20 },
   formTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 30, textAlign: 'center', color: '#333' },
   input: { backgroundColor: '#f5f5f5', borderRadius: 8, padding: 15, marginBottom: 16, fontSize: 16, width: '100%', minWidth: 300 },
-  button: { backgroundColor: '#1B1B1B', borderRadius: 8, padding: 15, marginBottom: 16, width: '100%', minWidth: 300 },
+  button: { backgroundColor: '#007AFF', borderRadius: 8, padding: 15, marginBottom: 16, width: '100%', minWidth: 300 },
   buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
-  switchText: { color: '#272727', textAlign: 'center', marginTop: 10, fontSize: 14 },
+  switchText: { color: '#007AFF', textAlign: 'center', marginTop: 10, fontSize: 14 },
 });
 
 export default SignupForm;

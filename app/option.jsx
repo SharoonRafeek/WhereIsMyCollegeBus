@@ -1,14 +1,15 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  BackHandler,
-  Image,
-  KeyboardAvoidingView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    BackHandler,
+    Image,
+    KeyboardAvoidingView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import logo from '../assets/images/raah.png'; // Adjust the path as necessary
 import { getAuthToken, storeAuthToken } from '../utils/authUtils';
@@ -103,7 +104,7 @@ const AuthScreen = () => {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-      <View style={[styles.container, { backgroundColor: '#1B1B1B' }]}>
+      <LinearGradient colors={['#1A81FF', '#0D47A1']} style={styles.container}>
         <View style={styles.headerContainer}>
           <Image source={logo} style={styles.logo} />
         </View>
@@ -143,13 +144,13 @@ const AuthScreen = () => {
               />
               {currentPage > 0 && (
                 <TouchableOpacity style={styles.backButton} onPress={handleBackbutton}>
-                  <MaterialIcons name="arrow-back" size={24} color="#272727" />
+                  <MaterialIcons name="arrow-back" size={24} color="#1A81FF" />
                 </TouchableOpacity>
               )}
             </>
           )}
         </View>
-      </View>
+      </LinearGradient>
     </KeyboardAvoidingView>
   );
 };
@@ -195,13 +196,13 @@ const styles = StyleSheet.create({
     marginTop: 200,
   },
   signupButton: {
-    backgroundColor: '#1B1B1B',
+    backgroundColor: '#1A81FF',
     paddingVertical: 15,
     borderRadius: 30,
     alignItems: 'center',
     width: '90%',
     marginBottom: 20,
-    shadowColor: '#1B1B1B',
+    shadowColor: '#1A81FF',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -214,7 +215,7 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     borderWidth: 2,
-    borderColor: '#1B1B1B',
+    borderColor: '#1A81FF',
     paddingVertical: 15,
     borderRadius: 30,
     alignItems: 'center',
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1B1B1B',
+    color: '#1A81FF',
   },
   backButton: {
     position: 'absolute',

@@ -18,6 +18,7 @@ import { auth, firestore } from './firebaseConfig'; // Import Firebase auth and 
 const LoginForm = ({ onSwitchToSignup }) => {
   const [admissionNumber, setAdmissionNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false); // State for Remember Me
   const router = useRouter(); // Initialize router
 
   useEffect(() => {
@@ -73,10 +74,15 @@ const LoginForm = ({ onSwitchToSignup }) => {
       <View style={styles.container}>
         <View style={styles.inner}>
           <FormContent
-            admissionNumber={admissionNumber} setAdmissionNumber={setAdmissionNumber}
-            password={password} setPassword={setPassword}
+            admissionNumber={admissionNumber} 
+            setAdmissionNumber={setAdmissionNumber}
+            password={password} 
+            setPassword={setPassword}
+            rememberMe={rememberMe} 
+            setRememberMe={setRememberMe}
             handleSubmit={handleSubmit}
             onSwitchToSignup={onSwitchToSignup}
+            router={router} // Add this line to pass router as prop
           />
         </View>
       </View>
@@ -84,7 +90,17 @@ const LoginForm = ({ onSwitchToSignup }) => {
   );
 };
 
-const FormContent = ({ admissionNumber, setAdmissionNumber, password, setPassword, handleSubmit, onSwitchToSignup }) => (
+const FormContent = ({ 
+  admissionNumber, 
+  setAdmissionNumber, 
+  password, 
+  setPassword, 
+  rememberMe, 
+  setRememberMe, 
+  handleSubmit, 
+  onSwitchToSignup,
+  router // Add router to destructured props
+}) => (
   <View style={styles.formContainer}>
     <Text style={styles.formTitle}>Login</Text>
     <TextInput
@@ -100,6 +116,23 @@ const FormContent = ({ admissionNumber, setAdmissionNumber, password, setPasswor
       onChangeText={setPassword}
       secureTextEntry
     />
+    <View style={styles.optionsContainer}>
+      <View style={styles.rememberMeContainer}>
+        <TouchableOpacity 
+          style={styles.checkbox}
+          onPress={() => setRememberMe(!rememberMe)}
+        >
+          <View style={[
+            styles.checkboxInner,
+            rememberMe && styles.checkboxChecked
+          ]} />
+        </TouchableOpacity>
+        <Text style={styles.rememberMeText}>Remember Me</Text>
+      </View>
+      <TouchableOpacity onPress={() => router.push('/forgotpassword')}>
+        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+      </TouchableOpacity>
+    </View>
     <TouchableOpacity style={styles.button} onPress={handleSubmit}>
       <Text style={styles.buttonText}>Login</Text>
     </TouchableOpacity>
@@ -143,10 +176,24 @@ const styles = StyleSheet.create({
     width: '100%',
     minWidth: 300,
   },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rememberMeText: {
+    marginLeft: 5,
+    fontSize: 14,
+    color: '#333',
+  },
+  forgotPasswordText: {
+    color: '#1B1B1B',
+    fontSize: 14,
+  },
   button: {
     backgroundColor: '#1B1B1B',
     borderRadius: 8,
     padding: 15,
+    marginTop: 20, // Added marginTop to create additional spacing
     marginBottom: 16,
     width: '100%',
     minWidth: 300,
@@ -162,6 +209,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     fontSize: 14,
+  },
+  checkbox: {
+    width: 17,
+    height: 17,
+    borderWidth: 1,
+    borderColor: '#1B1B1B',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxInner: {
+    width: 11,
+    height: 11,
+    borderRadius: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: '#1B1B1B',
+  },
+  optionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 30, // Increased from 20 to 30 to create more space
   },
 });
 
