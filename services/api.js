@@ -1,76 +1,44 @@
-// services/api.js
 import axios from 'axios';
+import { Buffer } from 'buffer'; // Add Buffer for base64 encoding
 
 const USERNAME = '9961446758';
 const PASSWORD = '123456';
+
+const basicAuth = Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
 
 export const fetchBusLocation = async () => {
     try {
         console.log('Fetching bus locations...');
 
-        const params = {
-            status: 'ALL',
-            isAddressRequired: false,
-            limit: 80,
-            offset: 0
+        const config = {
+            auth: { username: USERNAME, password: PASSWORD },
+            timeout: 10000,
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
         };
 
-        const config = {
-            auth: {
-                username: USERNAME,
-                password: PASSWORD
-            },
-            timeout: 10000,
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        };
+        const apiUrl = 'https://login.airotrack.in:8082/api/positions';
+        const queryParams = 'status=ALL&isAddressRequired=false&limit=80&offset=0';
+        const fullUrl = `${apiUrl}?${queryParams}`;
 
         try {
-            console.log('Trying axios request...');
-            const response = await axios.get(
-                'https://login.airotrack.in:8082/api/positions?status=ALL&isAddressRequired=false&limit=80&offset=0',
-                config
-            );
-            console.log('Axios request successful');
+            const response = await axios.get(fullUrl, config);
             return response.data;
         } catch (axiosError) {
-            console.log('Axios error:', axiosError.message);
+            console.log('Axios error, trying fetch...');
 
-            // Fallback to fetch
-            console.log('Trying fetch as fallback...');
-            const fetchResponse = await fetch(
-                'http://login.airotrack.in:8082/api/positions?status=ALL&isAddressRequired=false&limit=80&offset=0',
-                {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'Authorization': `Basic ${btoa(`${USERNAME}:${PASSWORD}`)}`
-                    }
+            const fetchResponse = await fetch(fullUrl, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${basicAuth}` // Pre-encoded credentials
                 }
-            );
+            });
 
-            if (!fetchResponse.ok) {
-                throw new Error(`HTTP error! status: ${fetchResponse.status}`);
-            }
-
-            const data = await fetchResponse.json();
-            console.log('Fetch request successful');
-            return data;
+            if (!fetchResponse.ok) throw new Error(`HTTP error! status: ${fetchResponse.status}`);
+            return await fetchResponse.json();
         }
-
     } catch (error) {
-        console.error('API Error:', {
-            message: error.message,
-            name: error.name,
-            stack: error.stack
-        });
+        console.error('API Error:', error.message);
         throw error;
     }
 };
-// const API_URL = 'https://login.airotrack.in:8082/api/positions?status=ALL&isAddressRequired=false&limit=80&offset=0#';
-// const USERNAME = '9961446758';  // Replace with your actual username
-// const PASSWORD = '123456'; 
-
-// const API_URL = 'https://9961446758:123456@login.airotrack.in:8082/api/positions?status=ALL&isAddressRequired=false&limit=80&offset=0#';
