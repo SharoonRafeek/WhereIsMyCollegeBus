@@ -1,9 +1,7 @@
-import { doc, setDoc } from 'firebase/firestore';
-import React, { useState } from 'react';
-import { Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useState } from 'react';
+import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as ImagePicker from 'react-native-image-picker';
-import { auth, firestore } from './firebaseConfig'; // Import auth & firestore
 
 const locationPages = [
   {
@@ -32,6 +30,15 @@ const LocationForm = ({ onLocationSubmit, currentPage, setCurrentPage }) => {
   const [selectedOptions, setSelectedOptions] = useState(Array(locationPages.length).fill(''));
   const [photo, setPhoto] = useState(null);
 
+  useEffect(() => {
+    (async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Sorry, we need camera roll permissions to make this work!');
+      }
+    })();
+  }, []);
+
   const handleNext = () => {
     if (currentPage < locationPages.length - 1) {
       setCurrentPage(currentPage + 1);
@@ -46,36 +53,19 @@ const LocationForm = ({ onLocationSubmit, currentPage, setCurrentPage }) => {
     setSelectedOptions(newSelectedOptions);
   };
 
-  const handleSubmit = async () => {
-    try {
-      const user = auth.currentUser; // Get the current authenticated user
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await setDoc(userDocRef, {
-        passDetails: {
-          selectedOptions,
-          photo,
-        }
-      }, { merge: true });
-
-      onLocationSubmit({ selectedOptions, photo });
-    } catch (error) {
-      Alert.alert("Error", error.message);
-    }
+  const handleSubmit = () => {
+    onLocationSubmit({ location: selectedOptions, photo });
   };
 
-  const pickImage = () => {
-    ImagePicker.launchImageLibrary(
-      { mediaType: 'photo', quality: 1 },
-      (response) => {
-        if (!response.didCancel && !response.error) {
-          setPhoto(response.assets[0].uri);
-        }
-      }
-    );
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setPhoto(result.assets[0].uri);
+    }
   };
 
   const renderOption = ({ item }) => {
@@ -189,7 +179,7 @@ const styles = StyleSheet.create({
     margin: 5,
   },
   activeDot: {
-    backgroundColor: '#272727',
+    backgroundColor: '#1A81FF',
   },
   innerContainer: {
     flex: 1,
@@ -215,7 +205,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#272727',
+    color: '#1A81FF',
     marginBottom: 5,
     textAlign: 'center',
   },
@@ -241,7 +231,7 @@ const styles = StyleSheet.create({
     minWidth: 300,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#272727',
+    shadowColor: '#1A81FF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
@@ -256,7 +246,7 @@ const styles = StyleSheet.create({
     width: '48%',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#272727',
+    shadowColor: '#1A81FF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
@@ -264,18 +254,18 @@ const styles = StyleSheet.create({
     marginHorizontal: '1%', // Adjusted margin for spacing between columns
   },
   selectedOption: {
-    backgroundColor: '#272727',
+    backgroundColor: '#1A81FF',
   },
   selectedOptionText: {
     color: '#FFFFFF',
   },
   optionText: {
     fontSize: 18,
-    color: '#272727',
+    color: '#1A81FF',
   },
   engineeringOptionText: {
     fontSize: 18,
-    color: '#272727', // Dark cyan text color
+    color: '#1A81FF', // Dark cyan text color
   },
   uploadContainer: {
     alignItems: 'center',
@@ -287,7 +277,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   uploadButton: {
-    backgroundColor: '#272727',
+    backgroundColor: '#1A81FF',
     borderRadius: 8,
     padding: 15,
     width: '100%',
@@ -307,7 +297,7 @@ const styles = StyleSheet.create({
     bottom: 5,
   },
   continueButton: {
-    backgroundColor: '#272727', // Changed to match signup.jsx
+    backgroundColor: '#007AFF', // Changed to match signup.jsx
     paddingVertical: 16,
     borderRadius: 30,
     width: '90%',
