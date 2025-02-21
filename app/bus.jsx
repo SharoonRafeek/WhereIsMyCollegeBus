@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import MapView, { Marker, PROVIDER_OPENSTREETMAP } from 'react-native-maps';
 import { fetchBusLocation } from '../services/api';
-import * as Network from 'expo-network';
 
 const Bus = () => {
     const [busLocation, setBusLocation] = useState({
@@ -103,7 +102,13 @@ const Bus = () => {
                     }}
                     title="KL18G4525"
                     description={`Last updated: ${new Date().toLocaleTimeString()}`}
-                />
+                >
+                    <Image
+                        source={require('../assets/bus-icon.png')}
+                        style={styles.busIcon}
+                        resizeMode="contain"
+                    />
+                </Marker>
             </MapView>
 
             {updating && (
