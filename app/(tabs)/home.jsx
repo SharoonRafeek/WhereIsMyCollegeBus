@@ -13,16 +13,34 @@ export default function BusTrackingApp() {
   const [filteredBuses, setFilteredBuses] = useState([]);
   const [filteredPlaces, setFilteredPlaces] = useState([]);
 
-  const handleBusCardPress = () => {
-    router.push('/bus');
+  // Modified to pass the bus index to the bus page
+  const handleBusCardPress = (busNumber) => {
+    // Convert bus number to index in the API array
+    // Based on your requirement: bus 1 -> index 0, bus 2 -> index 2, etc.
+    let apiIndex;
+
+    // Convert string bus number to integer
+    const busNum = parseInt(busNumber);
+
+    // Calculate API index based on bus number
+    // You mentioned bus 1 should use index 0, bus 2 should use index 2
+    // This suggests a pattern where index = (busNum - 1) * 2
+    apiIndex = (busNum - 1) * 2;
+
+    // Pass the API index as a parameter
+    router.push({
+      pathname: '/bus',
+      params: { busIndex: apiIndex }
+    });
   };
+
   const handleBusPassPress = () => {
     // Handle the action when the bus pass icon is pressed (e.g., navigate to a bus pass page)
     router.push('/bus-pass');
   };
 
   const busData = [
-    { number: '01', route: 'Perambra - College', timing: '8:05 AM - 8:45 AM', subPlaces: ['Perambra', 'College','Attakund','Payyoli Angadi','Palachuvad','Iringath','Meppayur','Anchampeedika'] },
+    { number: '01', route: 'Perambra - College', timing: '8:05 AM - 8:45 AM', subPlaces: ['Perambra', 'College', 'Attakund', 'Payyoli Angadi', 'Palachuvad', 'Iringath', 'Meppayur', 'Anchampeedika'] },
     { number: '02', route: 'Koyilandi - College', timing: '9:00 AM - 9:45 AM', subPlaces: ['Koyilandi', 'College'] },
     { number: '03', route: 'Koyilandi - College', timing: '10:00 AM - 10:45 AM', subPlaces: ['Koyilandi', 'College'] },
     { number: '04', route: 'Vadakara - College', timing: '11:00 AM - 11:45 AM', subPlaces: ['Vadakara', 'College'] },
@@ -35,7 +53,7 @@ export default function BusTrackingApp() {
   const handleSearch = (text) => {
     setSearchQuery(text);
     if (text) {
-      const filtered = busData.filter((bus) => 
+      const filtered = busData.filter((bus) =>
         bus.route.toLowerCase().includes(text.toLowerCase()) ||
         bus.subPlaces.some(place => place.toLowerCase().includes(text.toLowerCase()))
       );
@@ -60,7 +78,10 @@ export default function BusTrackingApp() {
   const busesToDisplay = searchQuery ? filteredBuses : busData;
 
   const renderBusCard = ({ item }) => (
-    <TouchableOpacity style={styles.busCard} onPress={handleBusCardPress}>
+    <TouchableOpacity
+      style={styles.busCard}
+      onPress={() => handleBusCardPress(item.number)}
+    >
       <View style={styles.busNumberContainer}>
         <Ionicons name="bus-outline" style={styles.busIcon} />
         <Text style={styles.busNumberText}>{item.number}</Text>
@@ -79,8 +100,8 @@ export default function BusTrackingApp() {
           colors={['#1A81FF', '#0D47A1']}
           style={styles.topSection}
         >
-        {/* Bus Pass Icon */}
-        <TouchableOpacity onPress={handleBusPassPress} style={styles.busPassIconContainer}>
+          {/* Bus Pass Icon */}
+          <TouchableOpacity onPress={handleBusPassPress} style={styles.busPassIconContainer}>
             <Ionicons name="card-outline" style={styles.busPassIcon} />
           </TouchableOpacity>
 
@@ -170,7 +191,7 @@ const styles = StyleSheet.create({
     resizeMode: 'contain', // Maintain the original aspect ratio
     marginTop: -100, // Add some spacing below the logo
   },
-  
+
   searchBarContainer: {
     width: '100%',
     alignItems: 'center',
