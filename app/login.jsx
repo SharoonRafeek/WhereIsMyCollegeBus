@@ -12,6 +12,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons'; // Import Ionicons
 import { checkLoginStatus, storeAuthToken } from '../utils/authUtils'; // Import auth utils
 import { auth, firestore } from './firebaseConfig'; // Import Firebase auth and firestore
 
@@ -111,13 +112,16 @@ const FormContent = ({
     <TextInput
       style={styles.input}
       placeholder="Admission Number"
+      placeholderTextColor="#999"
       value={admissionNumber}
       onChangeText={setAdmissionNumber}
+      autoCapitalize="characters"
     />
     <View style={styles.passwordContainer}>
       <TextInput
         style={[styles.input, styles.passwordInput]}
         placeholder="Password"
+        placeholderTextColor="#999"
         value={password}
         onChangeText={setPassword}
         secureTextEntry={!showPassword}
@@ -126,9 +130,11 @@ const FormContent = ({
         style={styles.passwordVisibilityButton}
         onPress={() => setShowPassword(!showPassword)}
       >
-        <Text style={styles.passwordVisibilityText}>
-          {showPassword ? '🔒' : '👁️'}
-        </Text>
+        <Ionicons 
+          name={showPassword ? 'eye-off' : 'eye'} 
+          size={24} 
+          color="black" 
+        />
       </TouchableOpacity>
     </View>
     <View style={styles.optionsContainer}>
@@ -261,8 +267,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 15,
     top: '50%',
-    transform: [{ translateY: -12 }],
-    padding: 5,
+    transform: [{ translateY: -13 }],
+    padding: 1,
+    opacity: 0.5,
   },
   passwordVisibilityText: {
     fontSize: 16,
