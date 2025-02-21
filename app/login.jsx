@@ -18,6 +18,7 @@ import { auth, firestore } from './firebaseConfig'; // Import Firebase auth and 
 const LoginForm = ({ onSwitchToSignup }) => {
   const [admissionNumber, setAdmissionNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // Add this line
   const [rememberMe, setRememberMe] = useState(false); // State for Remember Me
   const router = useRouter(); // Initialize router
 
@@ -78,6 +79,8 @@ const LoginForm = ({ onSwitchToSignup }) => {
             setAdmissionNumber={setAdmissionNumber}
             password={password} 
             setPassword={setPassword}
+            showPassword={showPassword} // Add this line
+            setShowPassword={setShowPassword} // Add this line
             rememberMe={rememberMe} 
             setRememberMe={setRememberMe}
             handleSubmit={handleSubmit}
@@ -95,6 +98,8 @@ const FormContent = ({
   setAdmissionNumber, 
   password, 
   setPassword, 
+  showPassword, // Add this line
+  setShowPassword, // Add this line
   rememberMe, 
   setRememberMe, 
   handleSubmit, 
@@ -109,13 +114,23 @@ const FormContent = ({
       value={admissionNumber}
       onChangeText={setAdmissionNumber}
     />
-    <TextInput
-      style={styles.input}
-      placeholder="Password"
-      value={password}
-      onChangeText={setPassword}
-      secureTextEntry
-    />
+    <View style={styles.passwordContainer}>
+      <TextInput
+        style={[styles.input, styles.passwordInput]}
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry={!showPassword}
+      />
+      <TouchableOpacity 
+        style={styles.passwordVisibilityButton}
+        onPress={() => setShowPassword(!showPassword)}
+      >
+        <Text style={styles.passwordVisibilityText}>
+          {showPassword ? '🔒' : '👁️'}
+        </Text>
+      </TouchableOpacity>
+    </View>
     <View style={styles.optionsContainer}>
       <View style={styles.rememberMeContainer}>
         <TouchableOpacity 
@@ -232,6 +247,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 30, // Increased from 20 to 30 to create more space
+  },
+  passwordContainer: {
+    position: 'relative',
+    width: '100%',
+    marginBottom: 16,
+  },
+  passwordInput: {
+    marginBottom: 0,
+    paddingRight: 50, // Make room for the show/hide button
+  },
+  passwordVisibilityButton: {
+    position: 'absolute',
+    right: 15,
+    top: '50%',
+    transform: [{ translateY: -12 }],
+    padding: 5,
+  },
+  passwordVisibilityText: {
+    fontSize: 16,
   },
 });
 

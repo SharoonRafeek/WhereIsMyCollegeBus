@@ -1,5 +1,5 @@
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, setDoc, where } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { auth, firestore } from './firebaseConfig'; // Import auth & firestore
@@ -11,23 +11,86 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
 
+  const checkExistingField = async (fieldName, value) => {
+    try {
+      // Convert admission number to uppercase for checking
+      const searchValue = fieldName === 'admissionNumber' ? value.toUpperCase() : value;
+      const q = query(
+        collection(firestore, 'users'),
+        where(fieldName, '==', searchValue)
+      );
+      const querySnapshot = await getDocs(q);
+      return !querySnapshot.empty;
+    } catch (error) {
+      console.error(`Error checking ${fieldName}:`, error);
+      throw error;
+    }
+  };
+
+  const isValidAdmissionFormat = (admissionNumber) => {
+    // Format: YYBMNNN where YY is year, followed by B/M/D, then 3 numbers
+    const pattern = /^\d{2}[BMD]\d{3}$/;
+    return pattern.test(admissionNumber.toUpperCase());
+  };
+
+  // Add this validation function after isValidAdmissionFormat
+  const isValidPhoneNumber = (phoneNumber) => {
+    const pattern = /^\d{10}$/;
+    return pattern.test(phoneNumber);
+  };
+
+  // Modify the handleSubmit function to include phone validation
   const handleSubmit = async () => {
     if (!fullName || !admissionNumber || !email || !phoneNumber || !password) {
       Alert.alert("Error", "All fields are required!");
       return;
     }
 
+    // Add phone number validation check
+    if (!isValidPhoneNumber(phoneNumber)) {
+      Alert.alert(
+        "Error",
+        "Please enter a valid 10-digit phone number"
+      );
+      return;
+    }
+
+    // Check admission number format
+    if (!isValidAdmissionFormat(admissionNumber)) {
+      Alert.alert(
+        "Error",
+        "Invalid admission number format. Please use format: YYBMNNN\nExample: 23B123"
+      );
+      return;
+    }
+
     try {
-      // 🔹 Create user in Firebase Authentication
+      // Convert admission number to uppercase before checking
+      const formattedAdmissionNumber = admissionNumber.toUpperCase();
+      
+      const [phoneExists, admissionExists] = await Promise.all([
+        checkExistingField('phoneNumber', phoneNumber),
+        checkExistingField('admissionNumber', formattedAdmissionNumber)
+      ]);
+
+      if (phoneExists || admissionExists) {
+        Alert.alert(
+          "Error",
+          "Account already exists"
+        );
+        return;
+      }
+
+      // Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 🔹 Store user data in Firestore (WITHOUT password)
+      // Store user data in Firestore with uppercase admission number
       const userDocRef = doc(firestore, 'users', user.uid);
       await setDoc(userDocRef, {
         uid: user.uid,
         fullName,
-        admissionNumber,
+        admissionNumber: formattedAdmissionNumber, // Store in uppercase
         email,
         phoneNumber,
       });
@@ -78,7 +141,13 @@ const FormContent = ({
   <View style={styles.formContainer}>
     <Text style={styles.formTitle}>Sign Up</Text>
     <TextInput style={styles.input} placeholder="Full Name" value={fullName} onChangeText={setFullName} />
-    <TextInput style={styles.input} placeholder="Admission Number" value={admissionNumber} onChangeText={setAdmissionNumber} />
+    <TextInput 
+      style={styles.input} 
+      placeholder="Admission Number" 
+      value={admissionNumber} 
+      onChangeText={setAdmissionNumber}
+      autoCapitalize="characters"
+    />
     <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
     <TextInput style={styles.input} placeholder="Phone Number" value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" />
     <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />

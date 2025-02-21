@@ -3,13 +3,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    BackHandler,
-    Image,
-    KeyboardAvoidingView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  BackHandler,
+  Image,
+  KeyboardAvoidingView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import logo from '../assets/images/raah.png'; // Adjust the path as necessary
 import { getAuthToken, storeAuthToken } from '../utils/authUtils';
