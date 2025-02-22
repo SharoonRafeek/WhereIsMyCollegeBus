@@ -115,153 +115,87 @@
 
 // export default TabBar;
 
-import { Feather, MaterialIcons } from '@expo/vector-icons';
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import BusPassPage from '../app/(tabs)/bus-pass';
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export function TabBar({ state, descriptors, navigation }) {
-    const icon = {
-        home: 'home',
-        Bus: 'directions-bus',
-        alert: 'bell',
-        profile: 'info',
-    };
+  // Define tab icons and labels based on the image
+  const tabConfig = [
+    { name: 'home', icon: 'home', label: 'Home' },
+    { name: 'bus-pass', icon: 'bus-outline', label: 'Bus Pass' },
+    { name: 'fee', icon: 'document-text-outline', label: 'Fee' },
+    { name: 'account', icon: 'person-outline', label: 'Account' },
+  ];
 
-    const animatedValues = useRef(state.routes.map(() => new Animated.Value(0))).current;
+  return (
+    <View style={styles.tabBar}>
+      {tabConfig.map((tab, index) => {
+        const { options } = descriptors[state.routes[index].key];
+        const isFocused = state.index === index;
 
-    useEffect(() => {
-        Animated.parallel(
-            state.routes.map((_, i) =>
-                Animated.timing(animatedValues[i], {
-                    toValue: i === state.index ? 1 : 0,
-                    duration: 200,
-                    useNativeDriver: false,
-                })
-            )
-        ).start();
-    }, [state.index]);
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: state.routes[index].key,
+            canPreventDefault: true,
+          });
 
-    return (
-        <View style={styles.tabbar}>
-            {state.routes.map((route, index) => {
-                const { options } = descriptors[route.key];
-                const label =
-                    options.tabBarLabel !== undefined
-                        ? options.tabBarLabel
-                        : options.title !== undefined
-                            ? options.title
-                            : route.name;
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(state.routes[index].name);
+          }
+        };
 
-                const isFocused = state.index === index;
-                const isFirstItem = index === 0;
-                const isLastItem = index === state.routes.length - 1;
-
-                const onPress = () => {
-                    const event = navigation.emit({
-                        type: 'tabPress',
-                        target: route.key,
-                        canPreventDefault: true,
-                    });
-
-                    if (!isFocused && !event.defaultPrevented) {
-                        navigation.navigate(route.name, route.params);
-                    }
-                };
-
-                const onLongPress = () => {
-                    navigation.emit({
-                        type: 'tabLongPress',
-                        target: route.key,
-                    });
-                };
-
-                const animatedWidth = animatedValues[index].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['20%', '28%'],
-                });
-
-                const animatedBackgroundColor = animatedValues[index].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['transparent', '#e0e8ff'],
-                });
-
-                const iconColor = isFocused ? '#3b82f6' : '#8e8e8e';
-
-                return (
-                    <Animated.View
-                        key={route.name}
-                        style={[
-                            styles.tabbarItem,
-                            {
-                                width: animatedWidth,
-                                backgroundColor: animatedBackgroundColor,
-                                marginLeft: isFirstItem ? 16 : 0,
-                                marginRight: isLastItem ? 16 : 0,
-                            },
-                        ]}
-                    >
-                        <TouchableOpacity
-                            accessibilityRole="button"
-                            accessibilityState={isFocused ? { selected: true } : {}}
-                            accessibilityLabel={options.tabBarAccessibilityLabel}
-                            testID={options.tabBarTestID}
-                            onPress={onPress}
-                            onLongPress={onLongPress}
-                            style={styles.touchable}
-                        >
-                            <View style={styles.iconLabelContainer}>
-                                {route.name === 'bus' ? (
-                                    <MaterialIcons name={icon[route.name]} size={28} color={iconColor} />
-                                ) : (
-                                    <Feather name={icon[route.name]} size={28} color={iconColor} />
-                                )}
-                                {isFocused && <Text style={[styles.label, { color: iconColor }]}>{label}</Text>}
-                            </View>
-                        </TouchableOpacity>
-                    </Animated.View>
-                );
-            })}
-        </View>
-    );
+        return (
+          <TouchableOpacity
+            key={tab.name}
+            accessibilityRole="button"
+            accessibilityState={isFocused ? { selected: true } : {}}
+            accessibilityLabel={options.tabBarAccessibilityLabel}
+            testID={options.tabBarTestID}
+            onPress={onPress}
+            style={styles.tabItem}
+          >
+            <Ionicons 
+              name={isFocused ? tab.icon.replace('-outline', '') : tab.icon} 
+              size={24} 
+              color={isFocused ? '#FF7200' : '#666'} 
+            />
+            <Text 
+              style={[
+                styles.tabLabel,
+                { color: isFocused ? '#FF7200' : '#666' }
+              ]}
+            >
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    tabbar: {
-        flexDirection: 'row',
-        backgroundColor: '#f6f6f6',
-        height: 72, // Increased height
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        paddingVertical: 8, // Added vertical padding
-    },
-    tabbarItem: {
-        height: 52, // Increased height
-        borderRadius: 26, // Adjusted to match new height
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    touchable: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%',
-    },
-    iconLabelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 4,
-    },
-    label: {
-        marginLeft: 4,
-        fontSize: 16,
-        fontWeight: '500',
-    },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    height: 60,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  tabItem: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  tabLabel: {
+    fontSize: 12,
+    marginTop: 4,
+  }
 });
 
 export default TabBar;
