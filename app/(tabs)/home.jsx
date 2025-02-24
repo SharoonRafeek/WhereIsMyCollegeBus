@@ -13,7 +13,9 @@ export default function BusTrackingApp() {
   const [filteredPlaces, setFilteredPlaces] = useState([]);
 
   const handleBusCardPress = (busNumber) => {
-    let apiIndex = (parseInt(busNumber) - 1) * 2;
+    let apiIndex;
+    const busNum = parseInt(busNumber);
+    apiIndex = (busNum - 1) * 2;
     router.push({
       pathname: '/bus',
       params: { busIndex: apiIndex }
@@ -21,21 +23,22 @@ export default function BusTrackingApp() {
   };
 
   const busData = [
-    { number: '01', route: 'Koyilandi-College', timing: '8:00-8:55 AM' },
-    { number: '02', route: 'Koyilandi-College', timing: '8:00-8:55 AM' },
-    { number: '03', route: 'Payyoli-College', timing: '8:00-8:55 AM' },
-    { number: '04', route: 'Perambra - College', timing: '8:05 AM - 8:45 AM' },
-    { number: '05', route: 'Koyilandi - College', timing: '9:00 AM - 9:45 AM' },
-    { number: '06', route: 'Vadakara - College', timing: '10:00 AM - 10:45 AM' },
+    { number: '01', route: 'Perambra - College', timing: '8:05 AM - 8:45 AM', subPlaces: ['Perambra', 'College', 'Attakund', 'Payyoli Angadi', 'Palachuvad', 'Iringath', 'Meppayur', 'Anchampeedika'] },
+    { number: '02', route: 'Koyilandi - College', timing: '9:00 AM - 9:45 AM', subPlaces: ['Koyilandi', 'College'] },
+    { number: '03', route: 'Koyilandi - College', timing: '10:00 AM - 10:45 AM', subPlaces: ['Koyilandi', 'College'] },
+    { number: '04', route: 'Vadakara - College', timing: '11:00 AM - 11:45 AM', subPlaces: ['Vadakara', 'College'] },
+    { number: '05', route: 'Vadakara - College', timing: '12:00 PM - 12:45 PM', subPlaces: ['Vadakara', 'College'] },
+    { number: '06', route: 'Payyoli - College', timing: '1:00 PM - 1:45 PM', subPlaces: ['Payyoli', 'College'] },
   ];
 
-  const places = ['Perambra', 'Koyilandi', 'Vadakara', 'Payyoli', 'College'];
+  const places = ['Perambra', 'Koyilandi', 'Vadakara', 'Payyoli', 'Attakund', 'Payyoli Angadi', 'Palachuvad', 'Iringath', 'Meppayur', 'Anchampeedika'];
 
   const handleSearch = (text) => {
     setSearchQuery(text);
     if (text) {
       const filtered = busData.filter((bus) =>
-        bus.route.toLowerCase().includes(text.toLowerCase())
+        bus.route.toLowerCase().includes(text.toLowerCase()) ||
+        bus.subPlaces.some(place => place.toLowerCase().includes(text.toLowerCase()))
       );
       setFilteredBuses(filtered);
 
@@ -63,7 +66,7 @@ export default function BusTrackingApp() {
       onPress={() => handleBusCardPress(item.number)}
     >
       <View style={styles.busNumberContainer}>
-        <Ionicons name="bus" style={styles.busIcon} />
+        <Ionicons name="bus-outline" style={styles.busIcon} />
         <Text style={styles.busNumberText}>{item.number}</Text>
       </View>
       <View style={styles.busDetails}>
@@ -80,31 +83,32 @@ export default function BusTrackingApp() {
           colors={['#FF7200', '#FF5C00']}
           style={[styles.topSection, { height: height * 0.45 }]}
         >
-          {/* Header with menu and notification icons */}
           <View style={styles.header}>
-            <TouchableOpacity>
-              <Ionicons name="menu-outline" style={styles.menuIcon} />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Ionicons name="notifications-outline" style={styles.notificationIcon} />
-            </TouchableOpacity>
+            <View style={styles.leftHeader}>
+              <TouchableOpacity style={styles.iconBackground}>
+                <Ionicons name="menu-outline" size={35} color="white" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.rightHeader}>
+              <TouchableOpacity 
+                style={styles.iconBackground}
+                onPress={() => router.push('/alert')}
+              >
+                <Ionicons name="notifications-outline" size={28} color="white" />
+              </TouchableOpacity>
+            </View>
           </View>
-
-          <View style={styles.imageContainer}>
           <Image
-              source={require('../../assets/images/bg-bus.png')}
-              style={styles.topImage}
-              onError={(e) => console.log('Image loading error:', e.nativeEvent.error)}
+            source={require('../../assets/images/bg-bus.png')}
+            style={styles.footerImage}
           />
-          </View>
-
           <View style={styles.searchBarContainer}>
             <View style={styles.searchBar}>
               <Ionicons name="location-outline" style={styles.locationIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Your Location"
-                placeholderTextColor="#666"
+                placeholder="Enter Destination"
+                placeholderTextColor="#B0B0B0"
                 value={searchQuery}
                 onChangeText={handleSearch}
               />
@@ -133,7 +137,7 @@ export default function BusTrackingApp() {
 
           <FlatList
             data={busesToDisplay}
-            keyExtractor={(item, index) => `${item.number}-${index}`}
+            keyExtractor={(item) => item.number}
             renderItem={renderBusCard}
             contentContainerStyle={styles.flatListContent}
             showsVerticalScrollIndicator={false}
@@ -151,82 +155,97 @@ export default function BusTrackingApp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  topSection: {
+    padding: 20,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+    alignItems: 'center',
+    position: 'relative',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 50, // Increased from 30
-    paddingHorizontal: 25,
-    position: 'absolute', // Added to fix position
-    top: 0, // Added to position at top
-    zIndex: 2, // Added to ensure icons stay on top
-  },
-  menuIcon: {
-    fontSize: 32, // Increased from 28
-    color: '#fff',
-  },
-  notificationIcon: {
-    fontSize: 32, // Increased from 28
-    color: '#fff',
-  },
-  topSection: {
-    paddingTop: 90, // Decreased from 120 to move content up
-    paddingBottom: 30,
-    borderBottomLeftRadius: 35,
-    borderBottomRightRadius: 35,
-    justifyContent: 'space-between', // Changed to space-between
     alignItems: 'center',
+    width: '100%',
+    position: 'absolute',
+    top: 50,
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  leftHeader: {
+    flex: 1,
+    marginLeft: -22,
+  },
+  rightHeader: {
+    flex: 1,
+    alignItems: 'flex-end',
+    marginRight: -22,
   },
   searchBarContainer: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: 120, // Increased to make room for image
-    marginTop: 70, // Increased from 10 to move search bar down
-    paddingHorizontal: 25,
-    zIndex: 2,
+    zIndex: 1,
+    marginTop: 120,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    width: '100%',
-    height: 60,
-    paddingLeft: 20,
+    borderRadius: 15,
+    width: '92%',
+    height: 50,
+    paddingLeft: 10,
+    paddingRight: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   locationIcon: {
-    fontSize: 20,
-    color: '#666',
+    fontSize: 24,
+    color: '#7B8390',
     marginRight: 10,
   },
   input: {
     flex: 1,
-    color: '#333',
+    color: '#7B8390',
     fontSize: 16,
   },
   searchButton: {
     backgroundColor: '#FF7200',
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   searchIcon: {
-    fontSize: 20,
+    fontSize: 24,
     color: 'white',
+  },
+  footerImage: {
+    position: 'absolute',
+    bottom: -42,
+    width: 300,
+    height: 200,
+    resizeMode: 'contain',
   },
   suggestionsList: {
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
-    width: '100%',
+    width: '92%',
     maxHeight: 150,
     marginTop: 5,
   },
   suggestionItem: {
-    padding: 12,
+    padding: 10,
     borderBottomWidth: 1,
     borderColor: '#EEE',
   },
@@ -239,76 +258,62 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   availableBusesText: {
+    marginTop: 10,
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 20,
-    color: '#333',
   },
   busCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    padding: 20, 
-    borderRadius: 20, 
-    marginBottom: 20, 
-    marginHorizontal: 5, 
+    paddingLeft: 30,
+    padding: 12,
+    borderRadius: 15,
+    marginBottom: 15,
     shadowColor: '#000',
-    shadowOpacity: 0.15, 
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 }, 
-    elevation: 5, 
-    height: 100, 
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   busNumberContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 20,
-    width: 60, 
+    padding: 10,
+    marginRight: 15,
+    justifyContent: 'center',
   },
   busIcon: {
-    fontSize: 30, 
+    fontSize: 30,
     color: '#FF7200',
-    marginRight: 8, 
+    marginRight: 8,
   },
   busNumberText: {
-    fontSize: 22, 
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#444',
   },
   busDetails: {
     flex: 1,
-    justifyContent: 'center', 
-  },
-  busRoute: {
-    fontSize: 18, 
-    fontWeight: 'bold',
-    color: '#222',
-    marginBottom: 8, 
+    padding: 20,
+    paddingLeft: 28,
   },
   busTiming: {
-    fontSize: 16, 
-    color: '#666',
+    fontSize: 16,
+    color: '#222',
+  },
+  busRoute: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
   },
   noBusesText: {
     fontSize: 16,
-    color: '#FF5C00',
+    color: '#FF0000',
     marginTop: 20,
     textAlign: 'center',
   },
   flatListContent: {
     paddingBottom: 50,
-  },
-  imageContainer: {
-    width: '100%',
-    alignItems: 'center',
-    position: 'absolute',
-    bottom: -42, // Added some padding from bottom
-    zIndex: 1,
-  },
-  topImage: {
-    width: 300,
-    height: 200,
-    resizeMode: 'contain', // Moved from Image component to styles
-    tintColor: undefined, // Changed from null to undefined to ensure no tinting
   },
 });
