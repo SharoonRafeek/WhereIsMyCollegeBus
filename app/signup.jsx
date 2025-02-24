@@ -140,17 +140,45 @@ const FormContent = ({
 }) => (
   <View style={styles.formContainer}>
     <Text style={styles.formTitle}>Sign Up</Text>
-    <TextInput style={styles.input} placeholder="Full Name" value={fullName} onChangeText={setFullName} />
+    <TextInput 
+      style={styles.input} 
+      placeholder="Full Name" 
+      placeholderTextColor="#999"
+      value={fullName} 
+      onChangeText={setFullName} 
+    />
     <TextInput 
       style={styles.input} 
       placeholder="Admission Number" 
+      placeholderTextColor="#999"
       value={admissionNumber} 
       onChangeText={setAdmissionNumber}
       autoCapitalize="characters"
     />
-    <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
-    <TextInput style={styles.input} placeholder="Phone Number" value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" />
-    <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
+    <TextInput 
+      style={styles.input} 
+      placeholder="Email" 
+      placeholderTextColor="#999"
+      value={email} 
+      onChangeText={setEmail} 
+      keyboardType="email-address" 
+    />
+    <TextInput 
+      style={styles.input} 
+      placeholder="Phone Number" 
+      placeholderTextColor="#999"
+      value={phoneNumber} 
+      onChangeText={setPhoneNumber} 
+      keyboardType="phone-pad" 
+    />
+    <TextInput 
+      style={styles.input} 
+      placeholder="Password" 
+      placeholderTextColor="#999"
+      value={password} 
+      onChangeText={setPassword} 
+      secureTextEntry 
+    />
     <TouchableOpacity style={styles.button} onPress={handleSubmit}>
       <Text style={styles.buttonText}>Sign Up</Text>
     </TouchableOpacity>

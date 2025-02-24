@@ -169,7 +169,10 @@ const NotificationScreen = () => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#1A81FF', '#0D47A1']} style={styles.header}>
+      <LinearGradient 
+        colors={['#FF7200', '#FF5C00']} // Changed from ['#1A81FF', '#0D47A1']
+        style={styles.header}
+      >
         <Text style={styles.headerText}>Notifications</Text>
       </LinearGradient>
 
@@ -196,7 +199,7 @@ const NotificationScreen = () => {
                 {selectedNotification && (
                   <>
                     <View style={styles.iconDetailsContainer}>
-                      <Icon name={selectedNotification.icon} size={50} color="#4B94F7" />
+                      <Icon name={selectedNotification.icon} size={50} color="#FF7200" /> // Changed from '#4B94F7'
                     </View>
                     <Text style={styles.modalTitle}>{selectedNotification.title}</Text>
                     <Text style={styles.modalDate}>{formatTime(selectedNotification.date)}</Text>
@@ -256,7 +259,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#4B94F7',
+    backgroundColor: '#FF7200', // Changed from '#4B94F7'
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
@@ -314,7 +317,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#FFF5F0', // Light orange background
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
