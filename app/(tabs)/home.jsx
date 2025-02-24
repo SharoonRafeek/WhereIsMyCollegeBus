@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, FlatList, Image, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Dimensions, FlatList, Image, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, Platform } from 'react-native';
 
 export default function BusTrackingApp() {
   const router = useRouter();
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     position: 'absolute',
-    top: 50,
+    top: Platform.OS === 'ios' ? 50 : 20, // Adjust for Android
     paddingHorizontal: 16,
     zIndex: 10,
   },
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     zIndex: 1,
-    marginTop: 120,
+    marginTop: Platform.OS === 'ios' ? 120 : 90, // Adjust for Android
   },
   searchBar: {
     flexDirection: 'row',
@@ -256,6 +256,8 @@ const styles = StyleSheet.create({
   middleSection: {
     flex: 1,
     padding: 20,
+    paddingBottom: 0, // Add more padding at the bottom
+    height: '100%', // Ensure full height usage
   },
   availableBusesText: {
     marginTop: 10,
@@ -314,6 +316,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   flatListContent: {
-    paddingBottom: 50,
+    flexGrow: 1,
+    paddingBottom: 100, // Increase bottom padding for more scroll space
   },
 });
