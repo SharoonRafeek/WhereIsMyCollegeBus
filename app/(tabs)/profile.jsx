@@ -22,7 +22,7 @@ const InfoHubScreen = () => {
   });
 
   if (!fontsLoaded) {
-    return <ActivityIndicator size={40} color="#0000ff" />
+    return <ActivityIndicator size={40} color="#FF7200" />
 
   }
 
@@ -30,7 +30,7 @@ const InfoHubScreen = () => {
     <TouchableOpacity style={styles.menuButton}>
       <View style={styles.menuItem}>
         <View style={styles.iconContainer}>
-          <MaterialIcons name={item.icon} size={30} color="#1A81FF" />
+          <MaterialIcons name={item.icon} size={30} color="#FF7200" />
         </View>
         <Text style={styles.menuText}>{item.title}</Text>
       </View>
@@ -39,7 +39,7 @@ const InfoHubScreen = () => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#1A81FF', '#0D47A1']} style={styles.header}>
+      <LinearGradient colors={['#FF7200', '#FF5C00']} style={styles.header}>
         <Text style={styles.headerText}>Info Hub</Text>
       </LinearGradient>
 
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#FFF5F0', // Light orange background
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
