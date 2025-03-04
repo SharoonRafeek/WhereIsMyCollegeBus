@@ -1,6 +1,5 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   BackHandler,
@@ -11,18 +10,17 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import logo from '../assets/images/raah.png'; // Adjust the path as necessary
+import logo from '../assets/images/raah.png';
 import { getAuthToken, storeAuthToken } from '../utils/authUtils';
-import LocationForm from './location';
 import LoginForm from './login';
 import SignupForm from './signup';
 
+
 const AuthScreen = () => {
-  const router = useRouter(); // Use Expo Router
+  const router = useRouter();
   const [isLogin, setIsLogin] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
-  const [isLocation, setIsLocation] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
+  const params = useLocalSearchParams();
 
   useEffect(() => {
     const checkAuthToken = async () => {
@@ -32,7 +30,7 @@ const AuthScreen = () => {
       }
     };
     checkAuthToken();
-  }, []);
+  }, [params.screen]);
 
   const handleLoginSubmit = async (email, password) => {
     console.log('Login', email, password);
@@ -48,50 +46,24 @@ const AuthScreen = () => {
     // Simulate API call and get token
     const token = 'dummy-auth-token';
     await storeAuthToken(token);
-    setIsSignup(false);
-    setIsLocation(true);
-  };
-
-  const handleLocationSubmit = async (location) => {
-    console.log('Location', location);
-    // Simulate API call and get token
-    const token = 'dummy-auth-token';
-    await storeAuthToken(token);
-    console.log('Signup complete');
-    // Navigate to home or another screen
-    router.push('/home');
+    // Navigate to location page - remove the leading slash
+    router.push('/locationPage');
   };
 
   const handleLoginClick = () => {
     setIsLogin(true);
     setIsSignup(false);
-    setIsLocation(false);
   };
 
   const handleSignupClick = () => {
     setIsSignup(true);
     setIsLogin(false);
-    setIsLocation(false);
-  };
-
-  const handleSignupSuccess = () => {
-    setIsSignup(false);
-    setIsLocation(true);
-  };
-
-  const handleBackbutton = () => {
-    if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
-    } else {
-      setIsLocation(false);
-      setIsSignup(true);
-    }
   };
 
   // Handle back press to navigate to home
   useEffect(() => {
     const onBackPress = () => {
-      router.push('/home'); // Navigate to Home screen using Expo Router
+      router.push('/home');
       return true; // Prevent default behavior
     };
 
@@ -104,13 +76,13 @@ const AuthScreen = () => {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-      <LinearGradient colors={['#1A81FF', '#0D47A1']} style={styles.container}>
+      <LinearGradient colors={['#FF7200', '#FF5C00']} style={styles.container}>
         <View style={styles.headerContainer}>
           <Image source={logo} style={styles.logo} />
         </View>
 
         <View style={styles.formContainer}>
-          {!isLogin && !isSignup && !isLocation && (
+          {!isLogin && !isSignup && (
             <View style={styles.buttonContainer}>
               <TouchableOpacity style={styles.signupButton} onPress={handleSignupClick}>
                 <Text style={styles.signupButtonText}>Sign Up</Text>
@@ -131,23 +103,8 @@ const AuthScreen = () => {
           {isSignup && (
             <SignupForm
               onSwitchToLogin={handleLoginClick}
-              onSignupSuccess={handleSignupSuccess}
+              onSignupSuccess={handleSignupSubmit}
             />
-          )}
-
-          {isLocation && (
-            <>
-              <LocationForm
-                onLocationSubmit={handleLocationSubmit}
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-              />
-              {currentPage > 0 && (
-                <TouchableOpacity style={styles.backButton} onPress={handleBackbutton}>
-                  <MaterialIcons name="arrow-back" size={24} color="#1A81FF" />
-                </TouchableOpacity>
-              )}
-            </>
           )}
         </View>
       </LinearGradient>
@@ -196,7 +153,7 @@ const styles = StyleSheet.create({
     marginTop: 200,
   },
   signupButton: {
-    backgroundColor: '#1A81FF',
+    backgroundColor: '#FF7200',
     paddingVertical: 15,
     borderRadius: 30,
     alignItems: 'center',
@@ -215,7 +172,7 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     borderWidth: 2,
-    borderColor: '#1A81FF',
+    borderColor: '#FF7200',
     paddingVertical: 15,
     borderRadius: 30,
     alignItems: 'center',
@@ -224,20 +181,7 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1A81FF',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 10,
-    zIndex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  backButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#FF7200',
   },
 });
 

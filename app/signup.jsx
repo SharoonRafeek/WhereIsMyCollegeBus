@@ -102,7 +102,8 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
       setPhoneNumber("");
       setPassword("");
 
-      onSignupSuccess(); // Call the success handler
+      // Call the onSignupSuccess prop which now navigates to the location page
+      onSignupSuccess(fullName, email, password);
     } catch (error) {
       Alert.alert("Error", error.message);
     }
@@ -194,9 +195,9 @@ const styles = StyleSheet.create({
   formContainer: { width: '100%', maxWidth: 400, alignSelf: 'center', paddingBottom: 80, paddingVertical: 20 },
   formTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 30, textAlign: 'center', color: '#333' },
   input: { backgroundColor: '#f5f5f5', borderRadius: 8, padding: 15, marginBottom: 16, fontSize: 16, width: '100%', minWidth: 300 },
-  button: { backgroundColor: '#007AFF', borderRadius: 8, padding: 15, marginBottom: 16, width: '100%', minWidth: 300 },
+  button: { backgroundColor: '#FF7200', borderRadius: 8, padding: 15, marginBottom: 16, width: '100%', minWidth: 300 },
   buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
-  switchText: { color: '#007AFF', textAlign: 'center', marginTop: 10, fontSize: 14 },
+  switchText: { color: '#1B1B1B', textAlign: 'center', marginTop: 10, fontSize: 14 },
 });
 
 export default SignupForm;
