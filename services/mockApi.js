@@ -1,4 +1,3 @@
-// mockApiService.js
 
 const STOPS = [
     { name: 'Perambra', coords: { latitude: 11.5640, longitude: 75.7564 } },
@@ -21,7 +20,7 @@ export const fetchMockLocationData = () => {
         const latDiff = nextStop.coords.latitude - currentStop.coords.latitude;
         const lonDiff = nextStop.coords.longitude - currentStop.coords.longitude;
 
-        progress += 0.1; // Increased speed for more noticeable movement
+        progress += 0.1;
 
         if (progress >= 1) {
             currentStopIndex++;
