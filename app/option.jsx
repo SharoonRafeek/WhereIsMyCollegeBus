@@ -41,13 +41,20 @@ const AuthScreen = () => {
     router.push('/home');
   };
 
-  const handleSignupSubmit = async (name, email, password) => {
-    console.log('Signup', name, email, password);
+  const handleSignupSubmit = async (name, email, password, hasVerifiedPassId = false) => {
+    console.log('Signup', name, email, password, hasVerifiedPassId ? '(verified)' : '');
     // Simulate API call and get token
     const token = 'dummy-auth-token';
     await storeAuthToken(token);
-    // Navigate to location page - remove the leading slash
-    router.push('/locationPage');
+    
+    // Route based on verification status
+    if (hasVerifiedPassId) {
+      // User verified with Pass ID - go directly to bus pass
+      router.push('/(tabs)/bus-pass');  // Fixed path to include (tabs) directory
+    } else {
+      // Regular signup - go to location page
+      router.push('/locationPage');
+    }
   };
 
   const handleLoginClick = () => {

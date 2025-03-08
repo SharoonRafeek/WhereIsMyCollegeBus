@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, FlatList, Image, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, Platform } from 'react-native';
+import { Dimensions, FlatList, Image, Keyboard, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 export default function BusTrackingApp() {
   const router = useRouter();
@@ -92,7 +92,7 @@ export default function BusTrackingApp() {
             <View style={styles.rightHeader}>
               <TouchableOpacity 
                 style={styles.iconBackground}
-                onPress={() => router.push('/alert')}
+                onPress={() => router.push('/notification')}
               >
                 <Ionicons name="notifications-outline" size={28} color="white" />
               </TouchableOpacity>

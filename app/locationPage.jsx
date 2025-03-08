@@ -63,7 +63,7 @@ export default function LocationPage() {
       const token = 'dummy-auth-token';
       await storeAuthToken(token);
       
-      router.push('/home');
+      router.push('/bus-pass');
     } catch (error) {
       console.error('Error saving location data:', error);
       Alert.alert(
