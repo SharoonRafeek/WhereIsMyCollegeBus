@@ -1,224 +1,262 @@
-import { Montserrat_400Regular, Montserrat_700Bold, useFonts } from '@expo-google-fonts/montserrat';
+import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { doc, getDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions, FlatList,
+  ScrollView, StyleSheet,
+  Text, View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { auth, firestore } from '../firebaseConfig';
 
-const notifications = [
-  {
-    id: '1',
-    title: 'Upcoming Bus Schedules',
-    description: 'Stay updated with the latest bus schedules and changes. Buses will run as scheduled with no delays expected. Be sure to check the schedule for any changes.',
-    date: new Date(), // Current date and time
-    icon: 'directions-bus',
-  },
-  {
-    id: '2',
-    title: 'Bus Service Update',
-    description: 'There will be no bus service tomorrow due to scheduled maintenance. We apologize for the inconvenience and recommend using alternate transportation.',
-    date: new Date(Date.now() - 86400000), // Yesterday
-    icon: 'warning',
-  },
-  {
-    id: '3',
-    title: 'Fee Payment Due',
-    description: 'Your fee payment is due soon. Please make sure to complete your payment before the deadline to avoid any late fees.',
-    date: new Date(Date.now() - 2 * 86400000), // 2 days ago
-    icon: 'payment',
-  },
-  {
-    id: '4',
-    title: 'New Bus Routes Added',
-    description: 'We’ve added new bus routes to better serve you. Check the new routes and schedules available on our app.',
-    date: new Date(Date.now() - 3 * 86400000), // 3 days ago
-    icon: 'map',
-  },
-  {
-    id: '5',
-    title: 'Weather Alert',
-    description: 'Heavy rain expected tomorrow. Plan accordingly and ensure you are prepared for wet conditions during your travels to and from college.',
-    date: new Date(Date.now() - 4 * 86400000), // 4 days ago
-    icon: 'cloud',
-  },
-  {
-    id: '6',
-    title: 'Bus Pass Renewal Reminder',
-    description: 'Your bus pass is about to expire. Please renew your pass at the earliest to avoid any interruptions in your service.',
-    date: new Date(Date.now() - 5 * 86400000), // 5 days ago
-    icon: 'credit-card',
-  },
-  {
-    id: '7',
-    title: 'Maintenance Notification',
-    description: 'Routine maintenance will be carried out on all college buses this weekend. Expect minor delays and plan your travels accordingly.',
-    date: new Date(Date.now() - 6 * 86400000), // 6 days ago
-    icon: 'build',
-  },
-  {
-    id: '8',
-    title: 'Service Disruption',
-    description: 'Due to unforeseen circumstances, some bus services to the college are disrupted today. We are working to resolve the issue as quickly as possible.',
-    date: new Date(Date.now() - 7 * 86400000), // 7 days ago
-    icon: 'error',
-  },
-  {
-    id: '9',
-    title: 'Important Safety Reminder',
-    description: 'Remember to follow all safety protocols while traveling on the college bus. Your safety is our top priority.',
-    date: new Date(Date.now() - 8 * 86400000), // 8 days ago
-    icon: 'health-and-safety',
-  },
-  {
-    id: '10',
-    title: 'Bus Delay Alert',
-    description: 'Bus #5 is delayed by 15 minutes due to traffic. We apologize for the inconvenience and thank you for your patience.',
-    date: new Date(Date.now() - 9 * 86400000), // 9 days ago
-    icon: 'directions-bus',
-  },
-  {
-    id: '11',
-    title: 'New App Feature',
-    description: 'We have added a new feature to our app that allows you to track your college bus in real-time. Update your app to start using this feature.',
-    date: new Date(Date.now() - 10 * 86400000), // 10 days ago
-    icon: 'phone-android',
-  },
-  {
-    id: '12',
-    title: 'Lost and Found',
-    description: 'If you’ve lost an item on the college bus, please visit our lost and found department or contact us through the app.',
-    date: new Date(Date.now() - 11 * 86400000), // 11 days ago
-    icon: 'find-in-page',
-  },
-  {
-    id: '13',
-    title: 'Customer Satisfaction Survey',
-    description: 'We value your feedback! Please take a few minutes to complete our customer satisfaction survey and help us improve our bus services.',
-    date: new Date(Date.now() - 12 * 86400000), // 12 days ago
-    icon: 'feedback',
-  },
-  {
-    id: '14',
-    title: 'Service Update',
-    description: 'Our college bus service hours will be adjusted on the upcoming public holiday. Check our app for the updated schedule.',
-    date: new Date(Date.now() - 13 * 86400000), // 13 days ago
-    icon: 'update',
-  },
-  {
-    id: '15',
-    title: 'Holiday Season Schedule',
-    description: 'During the holiday season, our college bus schedules may vary. Please check our app for the latest updates and schedule changes.',
-    date: new Date(Date.now() - 14 * 86400000), // 14 days ago
-    icon: 'event',
-  },
-];
-const formatTime = (date) => {
-  const now = new Date();
-  const diffInDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+const { width } = Dimensions.get('window');
 
-  const options = { hour: 'numeric', minute: 'numeric' };
-  if (diffInDays === 0) {
-    return date.toLocaleTimeString([], options); // "HH:MM AM/PM"
-  } else if (diffInDays === 1) {
-    return `Yest, ${date.toLocaleTimeString([], options)}`;
-  } else {
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }); // "DD MMM"
-  }
+// Simplified transaction item without interaction
+const TransactionItem = ({ item }) => {
+  return (
+    <View style={styles.transactionCard}>
+      <View style={styles.transactionIconContainer}>
+        <View style={[
+          styles.transactionIcon, 
+          {backgroundColor: item.type === 'credit' ? '#E8F5E9' : '#FFEBEE'}
+        ]}>
+          <MaterialIcons 
+            name={item.type === 'credit' ? 'arrow-downward' : 'arrow-upward'} 
+            size={20} 
+            color={item.type === 'credit' ? '#34c759' : '#ff3b30'} 
+          />
+        </View>
+      </View>
+      <View style={styles.transactionDetails}>
+        <Text style={styles.transactionDescription}>{item.description}</Text>
+        <Text style={styles.transactionDate}>{item.date}</Text>
+      </View>
+      <View style={styles.transactionAmount}>
+        <Text style={[
+          styles.amountText, 
+          {color: item.type === 'credit' ? '#34c759' : '#ff3b30'}
+        ]}>
+          {item.type === 'credit' ? '+' : '-'}₹{item.amount.toLocaleString()}
+        </Text>
+        <MaterialIcons name="receipt" size={16} color="#888" />
+      </View>
+    </View>
+  );
 };
 
-const NotificationScreen = () => {
-  let [fontsLoaded] = useFonts({
-    Montserrat_400Regular,
-    Montserrat_700Bold,
-  });
-
-  const [selectedNotification, setSelectedNotification] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-
-  if (!fontsLoaded) {
-    return <ActivityIndicator size={40} color="#0000ff" />
-
-  }
-
-  const handleNotificationPress = (notification) => {
-    setSelectedNotification(notification);
-    setModalVisible(true);
+const FeesScreen = () => {
+  const [loading, setLoading] = useState(true);
+  const [userFeeData, setUserFeeData] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  
+  const getUserFeeData = async () => {
+    try {
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        console.log("No authenticated user found");
+        return null;
+      }
+      
+      // Get the user document from Firestore
+      const userDocRef = doc(firestore, "users", currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        console.log("User document not found in Firestore");
+        return null;
+      }
+      
+      const userData = userDoc.data();
+      
+      // Check if user has locationData with fee information
+      // or if there's userData containing the fee details
+      if (userData.locationData || userData.userData) {
+        // Check different possible structures based on your app's data model
+        return {
+          ...userData.locationData,
+          ...userData.userData
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Error fetching user fee data:", error);
+      return null;
+    }
   };
 
-  const handleOutsidePress = () => {
-    setModalVisible(false);
-  };
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        const userData = await getUserFeeData();
+        
+        if (userData) {
+          setUserFeeData(userData);
+          
+          // Create transactions based on term payments
+          const userTransactions = [];
+          
+          if (userData.term1_date && userData.term1_amount) {
+            userTransactions.push({
+              id: 1,
+              date: new Date(userData.term1_date).toLocaleDateString('en-IN', 
+                { year: 'numeric', month: 'short', day: 'numeric' }),
+              description: 'Term 1 Fee Payment',
+              amount: userData.term1_amount,
+              type: 'debit',
+              receipt: userData.term1_receipt
+            });
+          }
+          
+          if (userData.term2_date && userData.term2_amount) {
+            userTransactions.push({
+              id: 2,
+              date: new Date(userData.term2_date).toLocaleDateString('en-IN', 
+                { year: 'numeric', month: 'short', day: 'numeric' }),
+              description: 'Term 2 Fee Payment',
+              amount: userData.term2_amount,
+              type: 'debit',
+              receipt: userData.term2_receipt
+            });
+          }
+          
+          if (userData.discount && userData.discount > 0) {
+            userTransactions.push({
+              id: 3,
+              date: new Date().toLocaleDateString('en-IN', 
+                { year: 'numeric', month: 'short', day: 'numeric' }),
+              description: 'Fee Discount',
+              amount: userData.discount,
+              type: 'credit'
+            });
+          }
+          
+          setTransactions(userTransactions);
+        }
+      } catch (error) {
+        console.error("Error in fetchUserData:", error);
+        Alert.alert("Error", "Failed to load fee data. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUserData();
+  }, []);
 
-  const renderNotificationItem = ({ item }) => (
-    <TouchableOpacity onPress={() => handleNotificationPress(item)}>
-      <View style={styles.notificationItem}>
-        <View style={styles.iconContainer}>
-          <Icon name={item.icon} size={20} color="#FFFFFF" />
+  // Calculate totals - handle possible different data structures
+  const totalFee = userFeeData?.total_fee || 0;
+  const paidAmount = userFeeData ? 
+    (userFeeData.term1_amount || 0) + (userFeeData.term2_amount || 0) : 0;
+  const discount = userFeeData?.discount || 0;
+  const pendingAmount = totalFee - paidAmount - discount;
+
+  const renderOverviewSection = () => {
+    if (loading) {
+      return (
+        <View style={[styles.feeOverviewContainer, {justifyContent: 'center', alignItems: 'center', height: 200}]}>
+          <ActivityIndicator size="large" color="#FF7200" />
+          <Text style={{marginTop: 10}}>Loading fee data...</Text>
         </View>
-        <View style={styles.notificationText}>
-          <View style={styles.titleRow}>
-            <Text style={styles.notificationTitle}>{item.title}</Text>
-            <Text style={styles.notificationTime}>{formatTime(item.date)}</Text>
+      );
+    }
+    
+    if (!userFeeData) {
+      return (
+        <View style={[styles.feeOverviewContainer, {justifyContent: 'center', alignItems: 'center', height: 200}]}>
+          <MaterialIcons name="error-outline" size={50} color="#888" />
+          <Text style={{marginTop: 10}}>No fee data found</Text>
+        </View>
+      );
+    }
+    
+    return (
+      <View style={styles.feeOverviewContainer}>
+        <Text style={[styles.overviewTotalFee, 
+          pendingAmount <= 0 ? styles.paidAmountValue : styles.overviewNegativeValue]}>
+          {pendingAmount <= 0 ? 'PAID' : `₹${pendingAmount.toLocaleString()}`}
+        </Text>
+        <Text style={styles.pendingAmountLabel}>
+          {pendingAmount <= 0 ? 'All payments completed' : 'Pending Amount'}
+        </Text>
+        
+        {pendingAmount > 0 && (
+          <View style={styles.overviewPayButton}>
+            <Text style={styles.overviewPayButtonText}>Pay Now</Text>
           </View>
-          <Text style={styles.notificationDescription}>
-            {item.description.slice(0, 50) + '...'}
-          </Text>
+        )}
+        
+        <View style={styles.overviewFooter}>
+          <View style={styles.overviewFooterItem}>
+            <Text style={styles.overviewLabel}>Total Fee</Text>
+            <Text style={[styles.overviewValue, styles.totalFeeValue]}>₹{totalFee.toLocaleString()}</Text>
+          </View>
+          <View style={styles.overviewFooterItem}>
+            <Text style={styles.overviewLabel}>Paid Amount</Text>
+            <Text style={[styles.overviewValue, styles.paidAmountValue]}>₹{paidAmount.toLocaleString()}</Text>
+          </View>
+          {discount > 0 && (
+            <View style={styles.overviewFooterItem}>
+              <Text style={styles.overviewLabel}>Discount</Text>
+              <Text style={[styles.overviewValue, styles.discountValue]}>₹{discount.toLocaleString()}</Text>
+            </View>
+          )}
         </View>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
-  return (
-    <View style={styles.container}>
-      <LinearGradient 
-        colors={['#FF7200', '#FF5C00']} // Changed from ['#1A81FF', '#0D47A1']
-        style={styles.header}
-      >
-        <Text style={styles.headerText}>Notifications</Text>
-      </LinearGradient>
+  const renderTransactionHistory = () => {
+    return (
+      <View style={styles.historySection}>
+        <Text style={styles.historyTitle}>Transaction History</Text>
 
-      <View style={styles.notificationContainer}>
         <FlatList
-          data={notifications}
-          renderItem={renderNotificationItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.notificationList}
-          showsVerticalScrollIndicator={false}
+          data={transactions}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.transactionList}
+          renderItem={({ item }) => (
+            <TransactionItem item={item} />
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="receipt-long" size={50} color="#AAA" />
+              <Text style={styles.emptyText}>No transactions found</Text>
+            </View>
+          }
+          nestedScrollEnabled
+          scrollEnabled={false}
         />
       </View>
+    );
+  };
 
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
+  return (
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={['#FF7200', '#FF5C00']} style={styles.header}>
+        <Text style={styles.headerText}>Bus Fee Details</Text>
+      </LinearGradient>
+      
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        <TouchableWithoutFeedback onPress={handleOutsidePress}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                {selectedNotification && (
-                  <>
-                    <View style={styles.iconDetailsContainer}>
-                      <Icon name={selectedNotification.icon} size={50} color="#FF7200" /> // Changed from '#4B94F7'
-                    </View>
-                    <Text style={styles.modalTitle}>{selectedNotification.title}</Text>
-                    <Text style={styles.modalDate}>{formatTime(selectedNotification.date)}</Text>
-                    <Text style={styles.modalDescription}>{selectedNotification.description}</Text>
-                  </>
-                )}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    </View>
+        {renderOverviewSection()}
+        {renderTransactionHistory()}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F9F9F9',
   },
   header: {
     height: 250,
@@ -226,119 +264,211 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    zIndex: 0, // Lower z-index to ensure it stays in the background
+    position: 'absolute', // Make it absolute positioned
+    width: '100%', // Cover the full width
+    top: 0, // Position at the top
   },
   headerText: {
     marginTop: -80,
     color: 'white',
     fontSize: 24,
     fontWeight: 'bold',
-    fontFamily: 'Montserrat_700Bold',
   },
-  notificationContainer: {
-    backgroundColor: 'white',
-    borderRadius: 25,
-    padding: 20,
-    marginHorizontal: 20,
-    marginTop: -110,
-    elevation: 5,
+  content: {
+    padding: 16,
+    paddingTop: 120, // Increase top padding to position content properly
+    zIndex: 2, // Higher z-index to appear above the header
+  },
+  loadingContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
-    height: '78%',
+    elevation: 4,
+    marginBottom: 20,
   },
-  notificationList: {
-    paddingBottom: 10,
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#666666',
   },
-  notificationItem: {
+  errorContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+    marginBottom: 20,
+  },
+  errorText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+  },
+  transactionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 16,
+    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#FF7200', // Changed from '#4B94F7'
+  transactionIconContainer: {
+    marginRight: 16,
+  },
+  transactionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
   },
-  notificationText: {
+  transactionDetails: {
     flex: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    paddingBottom: 10,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 5,
+  transactionDescription: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333333',
   },
-  notificationTitle: {
+  transactionDate: {
+    fontSize: 14,
+    color: '#666666',
+    marginTop: 2,
+  },
+  transactionAmount: {
+    alignItems: 'flex-end',
+  },
+  amountText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
-    fontFamily: 'Montserrat_700Bold',
-    flex: 1,
-    flexWrap: 'wrap',
+    marginBottom: 4,
   },
-  notificationTime: {
-    fontSize: 14,
-    color: '#666',
-    fontFamily: 'Montserrat_400Regular',
-    marginLeft: 10,
-    textAlign: 'right',
-  },
-  notificationDescription: {
-    color: '#666',
-    marginTop: 5,
-    fontFamily: 'Montserrat_400Regular',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
+  emptyContainer: {
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+    justifyContent: 'center',
+    padding: 40,
   },
-  modalContent: {
-    width: '90%',
-    backgroundColor: 'white',
+  emptyText: {
+    marginTop: 10,
+    color: '#666666',
+    fontSize: 16,
+  },
+  feeOverviewContainer: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 20,
-    alignItems: 'center',
-    elevation: 5,
+    paddingTop: 24, // Slightly increased top padding
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, // Slightly stronger shadow
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8, // Increased elevation for Android
+    marginBottom: 20,
+    marginHorizontal: 4,
+    marginTop: 30, // Add top margin to position below the header text
+    borderWidth: 0.5, // Add subtle border
+    borderColor: 'rgba(0,0,0,0.05)', // Very light border color
   },
-  iconDetailsContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFF5F0', // Light orange background
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
+  overviewTotalFee: {
+    textAlign: 'center',
+    fontSize: 36, // Slightly larger
+    fontWeight: '700',
+    color: '#333333',
+    marginTop: 10, // Add some top margin since we removed the heading
+    marginBottom: 8, // Adjusted for better spacing
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    fontFamily: 'Montserrat_700Bold',
-  },
-  modalDate: {
+  overviewPaidAmount: {
+    textAlign: 'center',
     fontSize: 14,
-    color: '#666',
-    fontFamily: 'Montserrat_400Regular',
+    color: '#10b981',
+    marginBottom: 10,
   },
-  modalDescription: {
-    color: '#666',
-    fontFamily: 'Montserrat_400Regular',
-    textAlign: 'center', // Center-align text for better appearance
+  overviewPayButton: {
+    backgroundColor: '#FF7200',
+    paddingVertical: 12,
+    borderRadius: 30,
     marginTop: 10,
+    marginBottom: 5,
+  },
+  overviewPayButtonText: {
+    textAlign: 'center',
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  overviewFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 15,
+  },
+  overviewFooterItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  overviewLabel: {
+    fontSize: 12,
+    color: '#666666',
+    marginBottom: 4,
+  },
+  overviewValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  overviewNegativeValue: {
+    color: '#ff3b30',
+  },
+  totalFeeValue: {
+    color: '#333333',
+  },
+  paidAmountValue: {
+    color: '#10b981',
+  },
+  historySection: {
+    marginTop: 10,
+  },
+  historyTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FF7200',
+    marginBottom: 16,
+  },
+  transactionList: {
+    paddingBottom: 20,
+  },
+  pendingAmountLabel: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#ff3b30',
+    marginBottom: 10,
+  },
+  discountValue: {
+    color: '#34c759',
   },
 });
 
-export default NotificationScreen;
+export default FeesScreen;

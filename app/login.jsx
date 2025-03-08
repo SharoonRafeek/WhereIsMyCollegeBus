@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   button: {
-    backgroundColor: '#1B1B1B',
+    backgroundColor: '#FF7200',
     borderRadius: 8,
     padding: 15,
     marginTop: 20, // Added marginTop to create additional spacing

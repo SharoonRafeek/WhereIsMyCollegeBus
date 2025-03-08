@@ -18,7 +18,7 @@ const locationPages = [
   },
   {
     title: 'Current Semester',
-    options: ['1st Year', '2nd Year', '3rd Year', '4th Year'], 
+    options: ['S1-S2', 'S3-S4', 'S5-S6', 'S7-S8'], 
   },
   {
     title: 'Upload Your Photo for Verification',
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     margin: 5,
   },
   activeDot: {
-    backgroundColor: '#1A81FF',
+    backgroundColor: '#FF7200',
   },
   innerContainer: {
     flex: 1,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#1A81FF',
+    color: '#FF7200',
     marginBottom: 5,
     textAlign: 'center',
   },
@@ -231,11 +231,11 @@ const styles = StyleSheet.create({
     minWidth: 300,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1A81FF',
+    shadowColor: '#1B1B1B',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
-    elevation: 5,
+    elevation: 2,
   },
   engineeringOptionButton: {
     backgroundColor: '#f5f5f5', // Changed to match signup.jsx
@@ -246,26 +246,26 @@ const styles = StyleSheet.create({
     width: '48%',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1A81FF',
+    shadowColor: '#1B1B1B',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
-    elevation: 5,
+    elevation: 2,
     marginHorizontal: '1%', // Adjusted margin for spacing between columns
   },
   selectedOption: {
-    backgroundColor: '#1A81FF',
+    backgroundColor: '#FF7200',
   },
   selectedOptionText: {
     color: '#FFFFFF',
   },
   optionText: {
     fontSize: 18,
-    color: '#1A81FF',
+    color: '#1B1B1B',
   },
   engineeringOptionText: {
     fontSize: 18,
-    color: '#1A81FF', // Dark cyan text color
+    color: '#1B1B1B', // Dark cyan text color
   },
   uploadContainer: {
     alignItems: 'center',
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   uploadButton: {
-    backgroundColor: '#1A81FF',
+    backgroundColor: '#FF7200',
     borderRadius: 8,
     padding: 15,
     width: '100%',
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     bottom: 5,
   },
   continueButton: {
-    backgroundColor: '#007AFF', // Changed to match signup.jsx
+    backgroundColor: '#FF7200', // Changed to match signup.jsx
     paddingVertical: 16,
     borderRadius: 30,
     width: '90%',
