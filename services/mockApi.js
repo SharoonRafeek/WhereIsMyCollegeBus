@@ -6,7 +6,7 @@ const STOPS = [
     { name: 'Manhakulam', coords: { latitude: 11.5248, longitude: 75.7046 } },
     { name: 'Thurayur', coords: { latitude: 11.5239, longitude: 75.6732 } },
     { name: 'Kurunthodi', coords: { latitude: 11.5586, longitude: 75.6470 } },
-    { name: 'CEV', coords: { latitude: 11.5644, longitude: 75.6508 } },
+    { name: 'CEV', coords: { latitude: 11.54, longitude: 75.6508 } },
 ];
 
 let currentStopIndex = 0;
