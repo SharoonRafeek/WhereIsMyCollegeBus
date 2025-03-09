@@ -1,10 +1,10 @@
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where } from 'firebase/firestore';
 import React, { useState } from 'react';
-import { Alert, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, Switch } from 'react-native';
 import { auth, firestore } from './firebaseConfig'; // Import auth & firestore
 
-const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
+const SignupForm = ({ onSwitchToLogin, onSignupSuccess, isProcessing = false }) => {
   const [fullName, setFullName] = useState('');
   const [admissionNumber, setAdmissionNumber] = useState('');
   const [email, setEmail] = useState('');
@@ -13,23 +13,41 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
   const [passId, setPassId] = useState(''); // New state for pass ID
   const [showPassIdVerification, setShowPassIdVerification] = useState(false); // Show passId field
   const [foundUserData, setFoundUserData] = useState(null); // Store found user data
+  const [hasVerifiedPassId, setHasVerifiedPassId] = useState(false);
 
+  // Fixed function to check if field exists in Firestore
   const checkExistingField = async (fieldName, value) => {
     try {
       console.log(`Checking if ${fieldName} '${value}' already exists...`);
+      // Don't proceed with empty checks
+      if (!value) {
+        console.log(`Empty ${fieldName}, skipping check`);
+        return false;
+      }
+
       // Convert admission number to uppercase for checking
       const searchValue = fieldName === 'admissionNumber' ? value.toUpperCase() : value;
-      const q = query(
-        collection(firestore, 'users'),
-        where(fieldName, '==', searchValue)
-      );
+
+      // Create a query against the users collection
+      const usersRef = collection(firestore, 'users');
+      const q = query(usersRef, where(fieldName, '==', searchValue));
+
+      // Execute the query
       const querySnapshot = await getDocs(q);
+
+      // Log the query results for debugging
+      console.log(`${fieldName} query returned ${querySnapshot.size} documents`);
+
+      // Check if any documents were returned
       const exists = !querySnapshot.empty;
       console.log(`${fieldName} exists: ${exists}`);
+
       return exists;
     } catch (error) {
       console.error(`Error checking ${fieldName}:`, error);
-      throw error;
+      // Return false instead of throwing to prevent blocking the signup flow
+      // due to permission issues or other Firebase errors
+      return false;
     }
   };
 
@@ -54,12 +72,12 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
         where('admission_no', '==', formattedAdmNum)
       );
       const querySnapshot = await getDocs(q);
-      
+
       if (querySnapshot.empty) {
         console.log(`No matching admission number found in data collection`);
         return null;
       }
-      
+
       console.log(`Found matching admission number in data collection`);
       // Return the first matching document data
       return querySnapshot.docs[0].data();
@@ -87,7 +105,7 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
     }
 
     const passIdNumber = parseInt(passId, 10);
-    
+
     if (isNaN(passIdNumber)) {
       console.log('Invalid Pass ID format');
       Alert.alert("Error", "Please enter a valid Pass ID number");
@@ -140,7 +158,7 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
 
       // Create a filtered userData without duplicating locationData fields
       const filteredUserData = Object.fromEntries(
-        Object.entries(foundUserData || {}).filter(([key]) => 
+        Object.entries(foundUserData || {}).filter(([key]) =>
           !['branch', 'semester', 'location', 'pass_id', 'pass_type', 'status'].includes(key)
         )
       );
@@ -158,7 +176,7 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
       console.log('User data stored successfully in Firestore');
 
       Alert.alert("Success", "User registered successfully!");
-      
+
       // Reset form
       setFullName("");
       setAdmissionNumber("");
@@ -210,13 +228,23 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
       // Convert admission number to uppercase before checking
       const formattedAdmissionNumber = admissionNumber.toUpperCase();
       console.log(`Formatted admission number: ${formattedAdmissionNumber}`);
-      
-      // CHANGED ORDER: First check if account already exists in Firebase
-      console.log('Checking if account already exists...');
-      const [phoneExists, admissionExists] = await Promise.all([
-        checkExistingField('phoneNumber', phoneNumber),
-        checkExistingField('admissionNumber', formattedAdmissionNumber)
-      ]);
+
+      // Perform check for existing account, but handle potential errors
+      let phoneExists = false;
+      let admissionExists = false;
+
+      try {
+        console.log('Checking if account already exists...');
+        // Check phone number and admission number separately to isolate issues
+        phoneExists = await checkExistingField('phoneNumber', phoneNumber);
+        console.log(`Phone exists result: ${phoneExists}`);
+
+        admissionExists = await checkExistingField('admissionNumber', formattedAdmissionNumber);
+        console.log(`Admission exists result: ${admissionExists}`);
+      } catch (checkError) {
+        console.error('Error checking existing fields:', checkError);
+        // Continue with signup even if the check fails
+      }
 
       if (phoneExists || admissionExists) {
         console.log('Account already exists');
@@ -226,7 +254,7 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
         );
         return;
       }
-      
+
       // Then check if admission number exists in Firebase data collection
       console.log('Checking if admission number exists in data collection...');
       const userData = await checkAdmissionNumberInFirebase(admissionNumber);
@@ -271,7 +299,12 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
       onSignupSuccess(fullName, email, password);
     } catch (error) {
       console.error('Signup error:', error);
-      Alert.alert("Error", error.message);
+      // Handle specific Firebase Auth errors
+      if (error.code === 'auth/email-already-in-use') {
+        Alert.alert("Error", "Email address is already in use by another account.");
+      } else {
+        Alert.alert("Error", error.message);
+      }
     }
   };
 
@@ -300,6 +333,8 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess }) => {
                 password={password} setPassword={setPassword}
                 handleSubmit={handleSubmit}
                 onSwitchToLogin={onSwitchToLogin}
+                hasVerifiedPassId={hasVerifiedPassId} setHasVerifiedPassId={setHasVerifiedPassId}
+                isProcessing={isProcessing}
               />
             )}
           </View>
@@ -319,20 +354,20 @@ const PassIdVerificationForm = ({ userData, passId, setPassId, verifyPassId, onC
     <Text style={styles.infoText}>
       We found your details.Please verify your PassID
     </Text>
-    
-    <TextInput 
-      style={styles.input} 
-      placeholder="Pass ID" 
+
+    <TextInput
+      style={styles.input}
+      placeholder="Pass ID"
       placeholderTextColor="#999"
-      value={passId} 
-      onChangeText={setPassId} 
-      keyboardType="numeric" 
+      value={passId}
+      onChangeText={setPassId}
+      keyboardType="numeric"
     />
-    
+
     <TouchableOpacity style={styles.button} onPress={verifyPassId}>
       <Text style={styles.buttonText}>Verify & Complete Signup</Text>
     </TouchableOpacity>
-    
+
     <TouchableOpacity onPress={onCancel}>
       <Text style={styles.switchText}>Not you? Go back</Text>
     </TouchableOpacity>
@@ -347,52 +382,83 @@ const FormContent = ({
   password, setPassword,
   handleSubmit,
   onSwitchToLogin,
+  hasVerifiedPassId, setHasVerifiedPassId,
+  isProcessing
 }) => (
   <View style={styles.formContainer}>
     <Text style={styles.formTitle}>Sign Up</Text>
-    <TextInput 
-      style={styles.input} 
-      placeholder="Full Name" 
+    <TextInput
+      style={styles.input}
+      placeholder="Full Name"
       placeholderTextColor="#999"
-      value={fullName} 
-      onChangeText={setFullName} 
+      value={fullName}
+      onChangeText={setFullName}
+      editable={!isProcessing}
     />
-    <TextInput 
-      style={styles.input} 
-      placeholder="Admission Number" 
+    <TextInput
+      style={styles.input}
+      placeholder="Admission Number"
       placeholderTextColor="#999"
-      value={admissionNumber} 
+      value={admissionNumber}
       onChangeText={setAdmissionNumber}
       autoCapitalize="characters"
+      editable={!isProcessing}
     />
-    <TextInput 
-      style={styles.input} 
-      placeholder="Email" 
+    <TextInput
+      style={styles.input}
+      placeholder="Email"
       placeholderTextColor="#999"
-      value={email} 
-      onChangeText={setEmail} 
-      keyboardType="email-address" 
+      value={email}
+      onChangeText={setEmail}
+      keyboardType="email-address"
+      editable={!isProcessing}
     />
-    <TextInput 
-      style={styles.input} 
-      placeholder="Phone Number" 
+    <TextInput
+      style={styles.input}
+      placeholder="Phone Number"
       placeholderTextColor="#999"
-      value={phoneNumber} 
-      onChangeText={setPhoneNumber} 
-      keyboardType="phone-pad" 
+      value={phoneNumber}
+      onChangeText={setPhoneNumber}
+      keyboardType="phone-pad"
+      editable={!isProcessing}
     />
-    <TextInput 
-      style={styles.input} 
-      placeholder="Password" 
+    <TextInput
+      style={styles.input}
+      placeholder="Password"
       placeholderTextColor="#999"
-      value={password} 
-      onChangeText={setPassword} 
-      secureTextEntry 
+      value={password}
+      onChangeText={setPassword}
+      secureTextEntry
+      editable={!isProcessing}
     />
-    <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-      <Text style={styles.buttonText}>Sign Up</Text>
+    <View style={styles.switchContainer}>
+      <Text style={styles.switchLabel}>I have a verified Pass ID</Text>
+      <Switch
+        trackColor={{ false: "#767577", true: "#FF7200" }}
+        thumbColor={hasVerifiedPassId ? "#FFFFFF" : "#f4f3f4"}
+        ios_backgroundColor="#3e3e3e"
+        onValueChange={() => setHasVerifiedPassId(!hasVerifiedPassId)}
+        value={hasVerifiedPassId}
+        disabled={isProcessing}
+      />
+    </View>
+
+    <Text style={styles.paymentNote}>
+      {hasVerifiedPassId
+        ? "You'll be directed to your bus pass"
+        : "You'll need to pay through Google Pay to continue"}
+    </Text>
+
+    <TouchableOpacity
+      style={[styles.button, isProcessing && styles.disabledButton]}
+      onPress={handleSubmit}
+      disabled={isProcessing}
+    >
+      <Text style={styles.buttonText}>
+        {hasVerifiedPassId ? "Sign Up" : "Sign Up & Continue to Payment"}
+      </Text>
     </TouchableOpacity>
-    <TouchableOpacity onPress={onSwitchToLogin}>
+    <TouchableOpacity onPress={onSwitchToLogin} disabled={isProcessing}>
       <Text style={styles.switchText}>Already have an account? Login</Text>
     </TouchableOpacity>
   </View>
@@ -411,6 +477,27 @@ const styles = StyleSheet.create({
   infoText: { fontSize: 14, textAlign: 'center', marginBottom: 20, color: '#555' },
   instructionText: { fontSize: 14, marginBottom: 15, color: '#333' },
   boldText: { fontWeight: 'bold' },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingHorizontal: 5,
+  },
+  switchLabel: {
+    fontSize: 16,
+    color: '#333',
+  },
+  paymentNote: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
 });
 
 export default SignupForm;

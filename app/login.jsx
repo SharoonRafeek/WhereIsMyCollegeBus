@@ -16,7 +16,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons'; // Import Ionicons
 import { checkLoginStatus, storeAuthToken } from '../utils/authUtils'; // Import auth utils
 import { auth, firestore } from './firebaseConfig'; // Import Firebase auth and firestore
 
-const LoginForm = ({ onSwitchToSignup }) => {
+const LoginForm = ({ onSwitchToSignup, isProcessing = false }) => {
   const [admissionNumber, setAdmissionNumber] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false); // Add this line
@@ -59,11 +59,11 @@ const LoginForm = ({ onSwitchToSignup }) => {
       await storeAuthToken(token);
 
       Alert.alert("Success", "Logged in successfully!");
-      
+
       // Reset form
       setAdmissionNumber('');
       setPassword('');
-      
+
       // Navigate to home page
       router.push('/home');
     } catch (error) {
@@ -76,17 +76,18 @@ const LoginForm = ({ onSwitchToSignup }) => {
       <View style={styles.container}>
         <View style={styles.inner}>
           <FormContent
-            admissionNumber={admissionNumber} 
+            admissionNumber={admissionNumber}
             setAdmissionNumber={setAdmissionNumber}
-            password={password} 
+            password={password}
             setPassword={setPassword}
             showPassword={showPassword} // Add this line
             setShowPassword={setShowPassword} // Add this line
-            rememberMe={rememberMe} 
+            rememberMe={rememberMe}
             setRememberMe={setRememberMe}
             handleSubmit={handleSubmit}
             onSwitchToSignup={onSwitchToSignup}
             router={router} // Add this line to pass router as prop
+            isProcessing={isProcessing} // Add this line to pass isProcessing as prop
           />
         </View>
       </View>
@@ -94,18 +95,19 @@ const LoginForm = ({ onSwitchToSignup }) => {
   );
 };
 
-const FormContent = ({ 
-  admissionNumber, 
-  setAdmissionNumber, 
-  password, 
-  setPassword, 
+const FormContent = ({
+  admissionNumber,
+  setAdmissionNumber,
+  password,
+  setPassword,
   showPassword, // Add this line
   setShowPassword, // Add this line
-  rememberMe, 
-  setRememberMe, 
-  handleSubmit, 
+  rememberMe,
+  setRememberMe,
+  handleSubmit,
   onSwitchToSignup,
-  router // Add router to destructured props
+  router, // Add router to destructured props
+  isProcessing // Add isProcessing to destructured props
 }) => (
   <View style={styles.formContainer}>
     <Text style={styles.formTitle}>Login</Text>
@@ -116,6 +118,7 @@ const FormContent = ({
       value={admissionNumber}
       onChangeText={setAdmissionNumber}
       autoCapitalize="characters"
+      editable={!isProcessing} // Add this line to disable input when processing
     />
     <View style={styles.passwordContainer}>
       <TextInput
@@ -125,23 +128,26 @@ const FormContent = ({
         value={password}
         onChangeText={setPassword}
         secureTextEntry={!showPassword}
+        editable={!isProcessing} // Add this line to disable input when processing
       />
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.passwordVisibilityButton}
         onPress={() => setShowPassword(!showPassword)}
+        disabled={isProcessing} // Add this line to disable button when processing
       >
-        <Ionicons 
-          name={showPassword ? 'eye-off' : 'eye'} 
-          size={24} 
-          color="black" 
+        <Ionicons
+          name={showPassword ? 'eye-off' : 'eye'}
+          size={24}
+          color="black"
         />
       </TouchableOpacity>
     </View>
     <View style={styles.optionsContainer}>
       <View style={styles.rememberMeContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.checkbox}
           onPress={() => setRememberMe(!rememberMe)}
+          disabled={isProcessing} // Add this line to disable checkbox when processing
         >
           <View style={[
             styles.checkboxInner,
@@ -150,14 +156,14 @@ const FormContent = ({
         </TouchableOpacity>
         <Text style={styles.rememberMeText}>Remember Me</Text>
       </View>
-      <TouchableOpacity onPress={() => router.push('/forgotpassword')}>
+      <TouchableOpacity onPress={() => router.push('/forgotpassword')} disabled={isProcessing}>
         <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
       </TouchableOpacity>
     </View>
-    <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+    <TouchableOpacity style={[styles.button, isProcessing && styles.disabledButton]} onPress={handleSubmit} disabled={isProcessing}>
       <Text style={styles.buttonText}>Login</Text>
     </TouchableOpacity>
-    <TouchableOpacity onPress={onSwitchToSignup}>
+    <TouchableOpacity onPress={onSwitchToSignup} disabled={isProcessing}>
       <Text style={styles.switchText}>Don't have an account? Sign Up</Text>
     </TouchableOpacity>
   </View>
@@ -273,6 +279,9 @@ const styles = StyleSheet.create({
   },
   passwordVisibilityText: {
     fontSize: 16,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
   },
 });
 
