@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, ActivityIndicator, Image, TouchableOpacity, StatusBar } from 'react-native';
-import MapView, { Marker, PROVIDER_OPENSTREETMAP, Polyline } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_OPENSTREETMAP, Polyline, Circle } from 'react-native-maps';
 import { fetchBusLocation } from '../services/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
 const Bus = () => {
     // Get the busIndex parameter from the URL
@@ -23,6 +24,9 @@ const Bus = () => {
     const [busPath, setBusPath] = useState([]);
     const [currentLocationInfo, setCurrentLocationInfo] = useState(null);
 
+    // Add state for user's location
+    const [userLocation, setUserLocation] = useState(null);
+
     // Helper function to format coordinates into a readable location
     const formatLocationFromCoordinates = (latitude, longitude) => {
         // Format to 6 decimal places (approximately 0.1m precision)
@@ -35,6 +39,30 @@ const Bus = () => {
             latitude,
             longitude
         };
+    };
+
+    // Function to get user's current location
+    const getUserLocation = async () => {
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                console.log('Location permission denied');
+                return;
+            }
+
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+            });
+
+            setUserLocation({
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+            });
+        } catch (error) {
+            console.error('Error getting user location:', error);
+        }
     };
 
     // Function to update the transit line with the current location
@@ -53,7 +81,7 @@ const Bus = () => {
         // Add the current position to the bus path (limit to last 100 points to prevent memory issues)
         setBusPath(prevPath => {
             const newPath = [
-                ...prevPath,
+                ...(prevPath || []),
                 { latitude, longitude, timestamp: new Date().toLocaleTimeString() }
             ];
             // Keep only the last 100 points to prevent performance issues
@@ -204,6 +232,9 @@ const Bus = () => {
     };
 
     useEffect(() => {
+        // Get user's location
+        getUserLocation();
+
         // Reset state when bus index changes
         setBusLocation(null);
         setError(null);
@@ -260,7 +291,7 @@ const Bus = () => {
 
                             <View style={styles.infoItem}>
                                 <Text style={styles.infoLabel}>Tracked Points</Text>
-                                <Text style={styles.infoValue}>{busPath.length}</Text>
+                                <Text style={styles.infoValue}>{Array.isArray(busPath) ? busPath.length : 0}</Text>
                             </View>
                         </View>
                     </View>
@@ -328,6 +359,14 @@ const Bus = () => {
                 <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
 
+            {/* Location Button */}
+            <TouchableOpacity
+                style={styles.locationButton}
+                onPress={getUserLocation}
+            >
+                <Ionicons name="locate" size={24} color="white" />
+            </TouchableOpacity>
+
             <MapView
                 style={[styles.map, { height: mapHeight }]}
                 provider={PROVIDER_OPENSTREETMAP}
@@ -338,6 +377,37 @@ const Bus = () => {
                 minZoomLevel={5}
                 maxZoomLevel={19}
             >
+                {/* User location marker */}
+                {userLocation && (
+                    <>
+                        {/* Circle showing accuracy radius */}
+                        <Circle
+                            center={{
+                                latitude: userLocation.latitude,
+                                longitude: userLocation.longitude,
+                            }}
+                            radius={100} // 100 meters radius
+                            fillColor="rgba(0, 0, 255, 0.1)"
+                            strokeColor="rgba(0, 0, 255, 0.3)"
+                            strokeWidth={2}
+                        />
+                        {/* User location marker */}
+                        <Marker
+                            coordinate={{
+                                latitude: userLocation.latitude,
+                                longitude: userLocation.longitude,
+                            }}
+                            title="Your Location"
+                            description="You are here"
+                            pinColor="#1E88E5"
+                        >
+                            <View style={styles.userLocationMarker}>
+                                <View style={styles.userLocationDot} />
+                            </View>
+                        </Marker>
+                    </>
+                )}
+
                 {/* Add Polyline to show the bus path on the map */}
                 {busPath.length > 1 && (
                     <Polyline
@@ -407,7 +477,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 10,
         fontSize: 16,
-        color: 'white',
+        color: '#333',
     },
     retryText: {
         marginTop: 10,
@@ -496,6 +566,43 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
 
+    // Location button
+    locationButton: {
+        position: 'absolute',
+        top: 40,
+        right: 15,
+        zIndex: 10,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 2,
+        elevation: 5,
+    },
+
+    // User location marker
+    userLocationMarker: {
+        height: 24,
+        width: 24,
+        borderRadius: 12,
+        backgroundColor: 'rgba(30, 136, 229, 0.3)',
+        borderWidth: 1,
+        borderColor: '#1E88E5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    userLocationDot: {
+        height: 12,
+        width: 12,
+        borderRadius: 6,
+        backgroundColor: '#1E88E5',
+    },
+
     // Transit line styles
     transitLineContainer: {
         backgroundColor: '#FF6F00', // More vibrant orange
@@ -538,123 +645,44 @@ const styles = StyleSheet.create({
     },
     currentLocationContainer: {
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        padding: 12,
+        padding: 15,
         borderRadius: 8,
-        marginBottom: 15,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.22,
         shadowRadius: 2.22,
         elevation: 3,
     },
-    locationStatusIndicator: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
+    locationLabel: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 4,
     },
-    statusDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        marginRight: 8,
-    },
-    inTransitDot: {
-        backgroundColor: '#FFC107', // Yellow for in transit
-    },
-    atStopDot: {
-        backgroundColor: '#4CAF50', // Green for at stop
-    },
-    currentLocationTitle: {
-        fontSize: 16,
+    locationCoordinates: {
+        fontSize: 18,
         fontWeight: 'bold',
-        flex: 1,
+        marginBottom: 15,
+        color: '#333',
     },
-    transitInfo: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 8,
-    },
-    locationInfo: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 8,
-    },
-    infoRow: {
+    infoGrid: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexWrap: 'wrap',
         marginTop: 5,
     },
-    infoBadge: {
-        backgroundColor: '#E0F2F1',
-        padding: 8,
-        borderRadius: 4,
-        margin: 2,
-        flex: 1,
+    infoItem: {
+        width: '50%',
+        paddingVertical: 8,
+        paddingHorizontal: 4,
     },
-    infoText: {
-        color: '#00796B',
+    infoLabel: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 2,
+    },
+    infoValue: {
+        fontSize: 16,
         fontWeight: '500',
-        fontSize: 12,
-        textAlign: 'center',
-    },
-    pathContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        position: 'relative',
-        height: 60, // Give it a fixed height
-    },
-    continuousLine: {
-        position: 'absolute',
-        height: 4,
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-        top: 10, // Center with the path markers
-        left: 20, // Start a bit in to align with the first marker
-        right: 20, // End a bit in to align with the last marker
-        zIndex: 0,
-    },
-    pathPoint: {
-        alignItems: 'center',
-        flex: 1,
-        zIndex: 1, // Make sure this is above the line
-    },
-    pathMarker: {
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        backgroundColor: 'white',
-        borderWidth: 2,
-        borderColor: '#666',
-        marginBottom: 5,
-    },
-    currentPathMarker: {
-        backgroundColor: '#2196F3',
-        borderColor: 'white',
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-        elevation: 5,
-    },
-    passedPathMarker: {
-        backgroundColor: '#81C784', // Light green
-        borderColor: '#4CAF50',
-    },
-    pathPointText: {
-        fontSize: 10,
-        textAlign: 'center',
-        color: 'white',
-        paddingHorizontal: 2,
-    },
-    currentPathText: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: 'white',
-    },
-    passedPathText: {
-        color: '#E8F5E9', // Very light green
+        color: '#333',
     }
 });
 
