@@ -66,23 +66,55 @@ const Bus = () => {
     };
 
     // Function to update the transit line with the current location
-    const updateTransitLine = (latitude, longitude) => {
-        // Get the actual location based on coordinates
-        const locationInfo = formatLocationFromCoordinates(latitude, longitude);
+    const updateTransitLine = (activeBus) => {
+        if (!activeBus || !activeBus.latitude || !activeBus.longitude) return;
 
-        // Set the current location info
+        // Get the actual location based on coordinates
+        const locationInfo = formatLocationFromCoordinates(activeBus.latitude, activeBus.longitude);
+
+        // Get time in readable format
+        const timeStr = new Date().toLocaleTimeString();
+
+        // Get formatted distance values with fallbacks
+        const distanceToday = parseFloat(activeBus.attributes?.distanceForday || 0).toFixed(2);
+        const totalDistance = parseFloat(activeBus.attributes?.totalDistance || 0).toFixed(2);
+
+        // Set the current location info with all API data
         setCurrentLocationInfo({
             ...locationInfo,
-            lastUpdated: new Date().toLocaleTimeString(),
-            speed: Math.round(Math.random() * 40) + 10, // Simulated speed in km/h
-            heading: Math.round(Math.random() * 360) // Simulated heading in degrees
+            lastUpdated: timeStr,
+
+            // Use actual values from API
+            speed: activeBus.speed || 0,
+            heading: activeBus.course || 0,
+
+            // Status information
+            status: activeBus.status || "UNKNOWN",
+            connection: activeBus.attributes?.connection_status || "unknown",
+            motion: activeBus.attributes?.motion ? "Moving" : "Stationary",
+            ignition: activeBus.attributes?.ignition ? "On" : "Off",
+
+            // Distance information
+            distanceToday: distanceToday,
+            totalDistance: totalDistance,
+            mileage: activeBus.attributes?.mileage || "N/A",
+
+            // Device information
+            deviceId: activeBus.deviceId || "N/A",
+            uniqueId: activeBus.uniqueId || "N/A",
+            fixTime: activeBus.fixTime || timeStr,
+            model: activeBus.model || "N/A",
+
+            // Additional information
+            category: activeBus.category || "N/A",
+            expireDate: activeBus.attributes?.expiredate || "N/A"
         });
 
         // Add the current position to the bus path (limit to last 100 points to prevent memory issues)
         setBusPath(prevPath => {
             const newPath = [
                 ...(prevPath || []),
-                { latitude, longitude, timestamp: new Date().toLocaleTimeString() }
+                { latitude: activeBus.latitude, longitude: activeBus.longitude, timestamp: timeStr }
             ];
             // Keep only the last 100 points to prevent performance issues
             return newPath.length > 100 ? newPath.slice(-100) : newPath;
@@ -127,7 +159,7 @@ const Bus = () => {
 
                 // Log current location
                 console.log('Current Location:', {
-                    bus: `Bus ${selectedBusIndex}`,
+                    bus: activeBus.name || `Bus ${selectedBusIndex}`,
                     latitude: activeBus.latitude,
                     longitude: activeBus.longitude,
                     timestamp: new Date().toLocaleTimeString()
@@ -136,14 +168,15 @@ const Bus = () => {
                 const currentTime = new Date();
                 setLastUpdated(currentTime.toLocaleTimeString());
 
-                // Set bus info for the marker
+                // Set bus info for the marker with full API data
                 setBusInfo({
                     title: activeBus.name || `KL18G45${selectedBusIndex + 23}`, // Generate a bus number if none exists
-                    description: `Last updated: ${currentTime.toLocaleTimeString()}`
+                    description: `Last updated: ${currentTime.toLocaleTimeString()}`,
+                    ...activeBus // Store all API data
                 });
 
-                // Update the transit line with the current location
-                updateTransitLine(activeBus.latitude, activeBus.longitude);
+                // Update the transit line with the current location and API data
+                updateTransitLine(activeBus);
 
                 // Clear any previous errors since we now have valid data
                 setError(null);
@@ -270,15 +303,53 @@ const Bus = () => {
 
                 {currentLocationInfo ? (
                     <View style={styles.currentLocationContainer}>
-                        <Text style={styles.locationLabel}>Current Coordinates:</Text>
-                        <Text style={styles.locationCoordinates}>{currentLocationInfo.name}</Text>
-
-                        <View style={styles.infoGrid}>
-                            <View style={styles.infoItem}>
-                                <Text style={styles.infoLabel}>Last Updated</Text>
-                                <Text style={styles.infoValue}>{currentLocationInfo.lastUpdated}</Text>
+                        <View style={styles.locationHeader}>
+                            <View style={styles.locationNameContainer}>
+                                <Text style={styles.locationName}>{busInfo.title || "Bus"}</Text>
+                                <Text style={styles.coordinates}>
+                                    {currentLocationInfo.name}
+                                </Text>
                             </View>
 
+                            <View style={[
+                                styles.statusBadge,
+                                currentLocationInfo.status === "STOPPED" ? styles.stoppedBadge : styles.movingBadge
+                            ]}>
+                                <Text style={styles.statusText}>{currentLocationInfo.status || "UNKNOWN"}</Text>
+                            </View>
+                        </View>
+
+                        {/* Status Indicators */}
+                        <View style={styles.featuresRow}>
+                            <View style={styles.featureBadge}>
+                                <Ionicons
+                                    name={currentLocationInfo.status === "STOPPED" ? "stop-circle" : "car"}
+                                    size={14}
+                                    color={currentLocationInfo.status === "STOPPED" ? "#FF6F00" : "#4CAF50"}
+                                />
+                                <Text style={styles.featureText}>
+                                    {currentLocationInfo.motion || (currentLocationInfo.status === "STOPPED" ? "Stationary" : "Moving")}
+                                </Text>
+                            </View>
+
+                            <View style={styles.featureBadge}>
+                                <Ionicons
+                                    name="wifi"
+                                    size={14}
+                                    color={currentLocationInfo.connection === "online" ? "#4CAF50" : "#F44336"}
+                                />
+                                <Text style={styles.featureText}>{currentLocationInfo.connection}</Text>
+                            </View>
+
+                            <View style={styles.featureBadge}>
+                                <Ionicons name="time" size={14} color="#2196F3" />
+                                <Text style={styles.featureText}>{currentLocationInfo.lastUpdated}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        <View style={styles.infoGrid}>
                             <View style={styles.infoItem}>
                                 <Text style={styles.infoLabel}>Speed</Text>
                                 <Text style={styles.infoValue}>{currentLocationInfo.speed} km/h</Text>
@@ -286,12 +357,31 @@ const Bus = () => {
 
                             <View style={styles.infoItem}>
                                 <Text style={styles.infoLabel}>Heading</Text>
-                                <Text style={styles.infoValue}>{currentLocationInfo.heading}°</Text>
+                                <Text style={styles.infoValue}>
+                                    {typeof currentLocationInfo.heading === 'number'
+                                        ? currentLocationInfo.heading.toFixed(1)
+                                        : currentLocationInfo.heading}°
+                                </Text>
                             </View>
 
                             <View style={styles.infoItem}>
-                                <Text style={styles.infoLabel}>Tracked Points</Text>
-                                <Text style={styles.infoValue}>{Array.isArray(busPath) ? busPath.length : 0}</Text>
+                                <Text style={styles.infoLabel}>Today</Text>
+                                <Text style={styles.infoValue}>{currentLocationInfo.distanceToday} km</Text>
+                            </View>
+
+                            <View style={styles.infoItem}>
+                                <Text style={styles.infoLabel}>Total</Text>
+                                <Text style={styles.infoValue}>{currentLocationInfo.totalDistance} km</Text>
+                            </View>
+
+                            <View style={styles.infoItem}>
+                                <Text style={styles.infoLabel}>Device ID</Text>
+                                <Text style={styles.infoValue}>{currentLocationInfo.deviceId}</Text>
+                            </View>
+
+                            <View style={styles.infoItem}>
+                                <Text style={styles.infoLabel}>Category</Text>
+                                <Text style={styles.infoValue}>{currentLocationInfo.category}</Text>
                             </View>
                         </View>
                     </View>
@@ -376,6 +466,7 @@ const Bus = () => {
                 zoomEnabled={true}
                 minZoomLevel={5}
                 maxZoomLevel={19}
+                initialRegion={busLocation}
             >
                 {/* User location marker */}
                 {userLocation && (
