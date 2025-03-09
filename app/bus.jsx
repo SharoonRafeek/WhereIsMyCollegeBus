@@ -26,22 +26,69 @@ const Bus = () => {
 
     // Add state for user's location
     const [userLocation, setUserLocation] = useState(null);
+    const [userPlaceName, setUserPlaceName] = useState(null);
 
-    // Helper function to format coordinates into a readable location
-    const formatLocationFromCoordinates = (latitude, longitude) => {
-        // Format to 6 decimal places (approximately 0.1m precision)
-        const lat = parseFloat(latitude).toFixed(6);
-        const lng = parseFloat(longitude).toFixed(6);
+    // Helper function to get place name from coordinates using reverse geocoding
+    const getPlaceNameFromCoordinates = async (latitude, longitude) => {
+        try {
+            // Format to 6 decimal places (approximately 0.1m precision)
+            const lat = parseFloat(latitude).toFixed(6);
+            const lng = parseFloat(longitude).toFixed(6);
 
-        // For a real app, this would be a reverse geocoding call to get actual location name
-        return {
-            name: `${lat}, ${lng}`,
-            latitude,
-            longitude
-        };
+            // Use Expo's reverseGeocodeAsync to get the place name
+            const locations = await Location.reverseGeocodeAsync({
+                latitude: parseFloat(latitude),
+                longitude: parseFloat(longitude),
+            });
+
+            if (locations && locations.length > 0) {
+                const location = locations[0];
+
+                // Construct a formatted address string based on available fields
+                const addressParts = [];
+
+                if (location.name) addressParts.push(location.name);
+                if (location.street) addressParts.push(location.street);
+                if (location.district) addressParts.push(location.district);
+                if (location.city) addressParts.push(location.city);
+                if (location.region) addressParts.push(location.region);
+                if (location.postalCode) addressParts.push(location.postalCode);
+                if (location.country) addressParts.push(location.country);
+
+                // Join address parts that are available
+                let formattedAddress = addressParts.join(', ');
+
+                // If no address parts are available, use coordinates as fallback
+                if (!formattedAddress) {
+                    formattedAddress = `${lat}, ${lng}`;
+                }
+
+                return {
+                    name: formattedAddress,
+                    latitude,
+                    longitude,
+                    rawAddress: location, // Store full address for potential later use
+                };
+            }
+
+            // Fallback to coordinates if reverse geocoding fails
+            return {
+                name: `${lat}, ${lng}`,
+                latitude,
+                longitude,
+            };
+        } catch (error) {
+            console.error('Error in reverse geocoding:', error);
+            // Return coordinates if there's an error
+            return {
+                name: `${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}`,
+                latitude,
+                longitude,
+            };
+        }
     };
 
-    // Function to get user's current location
+    // Function to get user's current location with place name
     const getUserLocation = async () => {
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
@@ -54,23 +101,45 @@ const Bus = () => {
                 accuracy: Location.Accuracy.Balanced,
             });
 
-            setUserLocation({
+            const userLoc = {
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
                 latitudeDelta: 0.01,
                 longitudeDelta: 0.01,
-            });
+            };
+
+            setUserLocation(userLoc);
+
+            // Get place name for user location
+            const placeName = await getPlaceNameFromCoordinates(
+                location.coords.latitude,
+                location.coords.longitude
+            );
+
+            setUserPlaceName(placeName.name);
+
         } catch (error) {
             console.error('Error getting user location:', error);
         }
     };
 
-    // Function to update the transit line with the current location
-    const updateTransitLine = (activeBus) => {
+    // Function to update the transit line with the current location and place name
+    const updateTransitLine = async (activeBus) => {
         if (!activeBus || !activeBus.latitude || !activeBus.longitude) return;
 
-        // Get the actual location based on coordinates
-        const locationInfo = formatLocationFromCoordinates(activeBus.latitude, activeBus.longitude);
+        // Log bus location to verify it's being set correctly
+        console.log("Bus location update:", {
+            latitude: activeBus.latitude,
+            longitude: activeBus.longitude,
+            valid: true,
+            timestamp: new Date().toISOString()
+        });
+
+        // Get the place name based on coordinates
+        const locationInfo = await getPlaceNameFromCoordinates(
+            activeBus.latitude,
+            activeBus.longitude
+        );
 
         // Get time in readable format
         const timeStr = new Date().toLocaleTimeString();
@@ -114,7 +183,12 @@ const Bus = () => {
         setBusPath(prevPath => {
             const newPath = [
                 ...(prevPath || []),
-                { latitude: activeBus.latitude, longitude: activeBus.longitude, timestamp: timeStr }
+                {
+                    latitude: activeBus.latitude,
+                    longitude: activeBus.longitude,
+                    timestamp: timeStr,
+                    placeName: locationInfo.name // Add place name to path point
+                }
             ];
             // Keep only the last 100 points to prevent performance issues
             return newPath.length > 100 ? newPath.slice(-100) : newPath;
@@ -176,7 +250,7 @@ const Bus = () => {
                 });
 
                 // Update the transit line with the current location and API data
-                updateTransitLine(activeBus);
+                await updateTransitLine(activeBus);
 
                 // Clear any previous errors since we now have valid data
                 setError(null);
@@ -306,8 +380,8 @@ const Bus = () => {
                         <View style={styles.locationHeader}>
                             <View style={styles.locationNameContainer}>
                                 <Text style={styles.locationName}>{busInfo.title || "Bus"}</Text>
-                                <Text style={styles.coordinates}>
-                                    {currentLocationInfo.name}
+                                <Text style={styles.placeName} numberOfLines={2} ellipsizeMode="tail">
+                                    {currentLocationInfo.name || "Unknown location"}
                                 </Text>
                             </View>
 
@@ -489,7 +563,7 @@ const Bus = () => {
                                 longitude: userLocation.longitude,
                             }}
                             title="Your Location"
-                            description="You are here"
+                            description={userPlaceName || "You are here"}
                             pinColor="#1E88E5"
                         >
                             <View style={styles.userLocationMarker}>
@@ -509,21 +583,37 @@ const Bus = () => {
                     />
                 )}
 
-                {/* Bus Marker */}
+                {/* Bus Marker - Main marker with enhanced visibility */}
                 <Marker
                     coordinate={{
                         latitude: busLocation.latitude,
                         longitude: busLocation.longitude,
                     }}
                     title={busInfo.title}
-                    description={busInfo.description}
+                    description={currentLocationInfo ? currentLocationInfo.name : busInfo.description}
+                    tracksViewChanges={false}  // Improves performance
+                    zIndex={1000}  // Ensure it's on top of other markers
                 >
-                    <Image
-                        source={require('../assets/images/bus-icon.png')}
-                        style={styles.busIcon}
-                        resizeMode="contain"
-                    />
+                    <View style={styles.busMarkerContainer}>
+                        <Image
+                            source={require('../assets/images/bus-icon.png')}
+                            style={styles.busIcon}
+                            resizeMode="contain"
+                        />
+                    </View>
                 </Marker>
+
+                {/* Fallback default marker in case the custom one fails */}
+                <Marker
+                    coordinate={{
+                        latitude: busLocation.latitude,
+                        longitude: busLocation.longitude,
+                    }}
+                    title={busInfo.title}
+                    description={currentLocationInfo ? currentLocationInfo.name : busInfo.description}
+                    pinColor="#FF6F00"  // Orange color to match the theme
+                    opacity={0}  // Hidden by default, will show if image fails to load
+                />
             </MapView>
 
             {/* Transit Line View */}
@@ -614,6 +704,21 @@ const styles = StyleSheet.create({
     updatingText: {
         color: 'white',
         marginLeft: 10,
+    },
+    busMarkerContainer: {
+        width: 50,
+        height: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 111, 0, 0.2)',
+        borderRadius: 25,
+        borderWidth: 2,
+        borderColor: '#FF6F00',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+        elevation: 5,
     },
     busIcon: {
         width: 40,
@@ -744,16 +849,73 @@ const styles = StyleSheet.create({
         shadowRadius: 2.22,
         elevation: 3,
     },
-    locationLabel: {
-        fontSize: 14,
-        color: '#666',
+    locationHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 10,
+    },
+    locationNameContainer: {
+        flex: 1,
+        marginRight: 10,
+    },
+    locationName: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
         marginBottom: 4,
     },
-    locationCoordinates: {
-        fontSize: 18,
+    placeName: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 5,
+    },
+    coordinates: {
+        fontSize: 12,
+        color: '#999',
+        marginTop: 2,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+    },
+    movingBadge: {
+        backgroundColor: '#4CAF50',
+    },
+    stoppedBadge: {
+        backgroundColor: '#FF6F00',
+    },
+    statusText: {
+        color: 'white',
+        fontSize: 12,
         fontWeight: 'bold',
-        marginBottom: 15,
+    },
+    featuresRow: {
+        flexDirection: 'row',
+        marginBottom: 10,
+        flexWrap: 'wrap',
+    },
+    featureBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginRight: 8,
+        marginBottom: 8,
+    },
+    featureText: {
+        fontSize: 12,
         color: '#333',
+        marginLeft: 4,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        marginVertical: 8,
     },
     infoGrid: {
         flexDirection: 'row',
