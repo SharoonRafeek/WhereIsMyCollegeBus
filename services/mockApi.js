@@ -20,7 +20,7 @@ export const fetchMockLocationData = () => {
         const latDiff = nextStop.coords.latitude - currentStop.coords.latitude;
         const lonDiff = nextStop.coords.longitude - currentStop.coords.longitude;
 
-        progress += 0.1;
+        progress += 0.99;
 
         if (progress >= 1) {
             currentStopIndex++;
