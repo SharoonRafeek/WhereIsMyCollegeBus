@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, ActivityIndicator, Image, TouchableOpacity, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ActivityIndicator, Image, TouchableOpacity, StatusBar } from 'react-native';
 import MapView, { Marker, PROVIDER_OPENSTREETMAP, Polyline, Circle } from 'react-native-maps';
 import { fetchBusLocation } from '../services/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -26,31 +26,24 @@ const Bus = () => {
 
     // Add state for user's location
     const [userLocation, setUserLocation] = useState(null);
-    const [userPlaceName, setUserPlaceName] = useState(null);
 
-    // Add debug state
-    const [debugMessages, setDebugMessages] = useState([]);
-    const [showDebug, setShowDebug] = useState(false);
+    // Helper function to format coordinates into a readable location
+    const formatLocationFromCoordinates = (latitude, longitude) => {
+        // Format to 6 decimal places (approximately 0.1m precision)
+        const lat = parseFloat(latitude).toFixed(6);
+        const lng = parseFloat(longitude).toFixed(6);
 
-    // Debug function
-    const addDebugMessage = (message) => {
-        console.log("DEBUG:", message);
-        setDebugMessages(prev => [
-            { id: Date.now(), message, time: new Date().toLocaleTimeString() },
-            ...prev.slice(0, 19) // Keep only last 20 messages
-        ]);
+        // For a real app, this would be a reverse geocoding call to get actual location name
+        return {
+            name: `${lat}, ${lng}`,
+            latitude,
+            longitude
+        };
     };
 
-    // Helper function to get place name from coordinates using reverse geocoding
+    // Add place name function
     const getPlaceNameFromCoordinates = async (latitude, longitude) => {
         try {
-            addDebugMessage(`Getting place name for: ${latitude}, ${longitude}`);
-
-            // Format coordinates for display
-            const lat = parseFloat(latitude).toFixed(6);
-            const lng = parseFloat(longitude).toFixed(6);
-
-            // Use Expo's reverseGeocodeAsync to get the place name
             const locations = await Location.reverseGeocodeAsync({
                 latitude: parseFloat(latitude),
                 longitude: parseFloat(longitude),
@@ -67,52 +60,37 @@ const Bus = () => {
                 if (location.district) addressParts.push(location.district);
                 if (location.city) addressParts.push(location.city);
                 if (location.region) addressParts.push(location.region);
-                if (location.postalCode) addressParts.push(location.postalCode);
-                if (location.country) addressParts.push(location.country);
 
                 // Join address parts that are available
                 let formattedAddress = addressParts.join(', ');
 
                 // If no address parts are available, use coordinates as fallback
                 if (!formattedAddress) {
-                    formattedAddress = `${lat}, ${lng}`;
+                    formattedAddress = `${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}`;
                 }
-
-                addDebugMessage(`Place name found: ${formattedAddress.substring(0, 30)}...`);
 
                 return {
                     name: formattedAddress,
                     latitude,
-                    longitude,
-                    rawAddress: location, // Store full address for potential later use
+                    longitude
                 };
             }
 
-            // Fallback to coordinates if reverse geocoding fails
-            addDebugMessage(`No place found, using coordinates`);
-            return {
-                name: `${lat}, ${lng}`,
-                latitude,
-                longitude,
-            };
+            // Fallback to original function if reverse geocoding fails
+            return formatLocationFromCoordinates(latitude, longitude);
         } catch (error) {
-            addDebugMessage(`Geocoding error: ${error.message}`);
-            // Return coordinates if there's an error
-            return {
-                name: `${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}`,
-                latitude,
-                longitude,
-            };
+            console.error('Error in reverse geocoding:', error);
+            // Return original functionality if there's an error
+            return formatLocationFromCoordinates(latitude, longitude);
         }
     };
 
-    // Function to get user's current location with place name
+    // Function to get user's current location
     const getUserLocation = async () => {
         try {
-            addDebugMessage('Getting user location...');
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                addDebugMessage('Location permission denied');
+                console.log('Location permission denied');
                 return;
             }
 
@@ -120,85 +98,23 @@ const Bus = () => {
                 accuracy: Location.Accuracy.Balanced,
             });
 
-            addDebugMessage(`User location: ${location.coords.latitude}, ${location.coords.longitude}`);
-
-            const userLoc = {
+            setUserLocation({
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
                 latitudeDelta: 0.01,
                 longitudeDelta: 0.01,
-            };
-
-            setUserLocation(userLoc);
-
-            // Get place name for user location
-            const placeName = await getPlaceNameFromCoordinates(
-                location.coords.latitude,
-                location.coords.longitude
-            );
-
-            setUserPlaceName(placeName.name);
-
+            });
         } catch (error) {
-            addDebugMessage(`User location error: ${error.message}`);
+            console.error('Error getting user location:', error);
         }
     };
 
-    // IMPORTANT: For testing/debugging - set a default bus location
-    const setDummyBusLocation = () => {
-        // Use a fixed location if API fails (for testing)
-        const defaultLocation = {
-            latitude: 12.9716,
-            longitude: 77.5946,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-        };
-
-        addDebugMessage(`Setting dummy bus location: ${defaultLocation.latitude}, ${defaultLocation.longitude}`);
-
-        setBusLocation(defaultLocation);
-
-        // Also update bus info
-        setBusInfo({
-            title: `Bus ${selectedBusIndex} (Debug)`,
-            description: "Test location in Bangalore"
-        });
-
-        // Set current location info for the transit line
-        const dummyLocationInfo = {
-            name: "Bangalore, Karnataka, India",
-            latitude: defaultLocation.latitude,
-            longitude: defaultLocation.longitude,
-            lastUpdated: new Date().toLocaleTimeString(),
-            speed: 45,
-            heading: 90,
-            status: "MOVING",
-            connection: "online",
-            motion: "Moving",
-            ignition: "On",
-            distanceToday: "120.50",
-            totalDistance: "5834.20",
-            deviceId: "TEST-DEV-123",
-            category: "Bus"
-        };
-
-        setCurrentLocationInfo(dummyLocationInfo);
-    };
-
-    // Function to update the transit line with the current location and place name
+    // Function to update the transit line with the current location
     const updateTransitLine = async (activeBus) => {
-        if (!activeBus || !activeBus.latitude || !activeBus.longitude) {
-            addDebugMessage('Invalid bus data for transit line update');
-            return;
-        }
+        if (!activeBus || !activeBus.latitude || !activeBus.longitude) return;
 
-        addDebugMessage(`Transit line update: ${activeBus.latitude}, ${activeBus.longitude}`);
-
-        // Get the place name based on coordinates
-        const locationInfo = await getPlaceNameFromCoordinates(
-            activeBus.latitude,
-            activeBus.longitude
-        );
+        // Get the actual location based on coordinates
+        const locationInfo = await getPlaceNameFromCoordinates(activeBus.latitude, activeBus.longitude);
 
         // Get time in readable format
         const timeStr = new Date().toLocaleTimeString();
@@ -242,12 +158,7 @@ const Bus = () => {
         setBusPath(prevPath => {
             const newPath = [
                 ...(prevPath || []),
-                {
-                    latitude: activeBus.latitude,
-                    longitude: activeBus.longitude,
-                    timestamp: timeStr,
-                    placeName: locationInfo.name // Add place name to path point
-                }
+                { latitude: activeBus.latitude, longitude: activeBus.longitude, timestamp: timeStr }
             ];
             // Keep only the last 100 points to prevent performance issues
             return newPath.length > 100 ? newPath.slice(-100) : newPath;
@@ -256,7 +167,6 @@ const Bus = () => {
 
     const updateBusLocation = async () => {
         try {
-            addDebugMessage('Updating bus location...');
             // Only show the updating indicator, don't clear errors if we already
             // have a valid bus location (this prevents UI flashing during retries)
             setUpdating(true);
@@ -291,7 +201,13 @@ const Bus = () => {
                 activeBus.latitude !== 0 &&
                 activeBus.longitude !== 0) {
 
-                addDebugMessage(`Bus location received: ${activeBus.latitude}, ${activeBus.longitude}`);
+                // Log current location
+                console.log('Current Location:', {
+                    bus: activeBus.name || `Bus ${selectedBusIndex}`,
+                    latitude: activeBus.latitude,
+                    longitude: activeBus.longitude,
+                    timestamp: new Date().toLocaleTimeString()
+                });
 
                 const currentTime = new Date();
                 setLastUpdated(currentTime.toLocaleTimeString());
@@ -322,11 +238,10 @@ const Bus = () => {
                 if (!busLocation) {
                     throw new Error(`Invalid location data for Bus ${selectedBusIndex}`);
                 } else {
-                    addDebugMessage(`Invalid location data received, using previous location`);
+                    console.log(`Received invalid location data for Bus ${selectedBusIndex}, using previous location`);
                 }
             }
         } catch (err) {
-            addDebugMessage(`Update error: ${err.message}`);
             // Only update the error state if this is an initial load or a serious error
             if (!err.message.includes('aborted')) {
                 // Only show errors to the user if we don't have a valid location yet
@@ -336,8 +251,21 @@ const Bus = () => {
                 } else {
                     // For temporary errors when we already have a location,
                     // just log them without showing to the user
-                    addDebugMessage(`Temporary error: ${err.message}, continuing with previous location`);
+                    console.warn('Temporary location update error:', {
+                        bus: `Bus ${selectedBusIndex}`,
+                        error: err.message,
+                        continuingWithPreviousLocation: true
+                    });
                 }
+
+                console.error('Location Update Error:', {
+                    bus: `Bus ${selectedBusIndex}`,
+                    error: err.message,
+                    lastKnownLocation: busLocation ? {
+                        latitude: busLocation.latitude,
+                        longitude: busLocation.longitude
+                    } : 'No previous location data'
+                });
             }
         } finally {
             setLoading(false);
@@ -358,7 +286,7 @@ const Bus = () => {
             // Calculate backoff delay (2^retryCount * 1000ms)
             const delay = Math.min(Math.pow(2, retryCount) * 1000, 10000); // Cap at 10 seconds
 
-            addDebugMessage(`Retry ${retryCount + 1} with ${delay}ms delay`);
+            console.log(`Retry attempt ${retryCount + 1} with ${delay}ms delay for Bus ${selectedBusIndex}`);
 
             // Wait for the backoff period
             await new Promise(resolve => setTimeout(resolve, delay));
@@ -369,23 +297,18 @@ const Bus = () => {
             // Reset failure count on success
             setFailureCount(0);
         } catch (err) {
-            addDebugMessage(`Retry ${retryCount + 1} failed: ${err.message}`);
+            console.error(`Retry ${retryCount + 1} failed for Bus ${selectedBusIndex}:`, err.message);
 
             // If we haven't reached max retries, try again
             if (retryCount < maxRetryAttempts) {
                 retryWithBackoff(retryCount + 1);
             } else {
-                addDebugMessage(`Max retries (${maxRetryAttempts}) reached, giving up`);
-
-                // For testing only - set a dummy location if all retries fail
-                setDummyBusLocation();
+                console.error(`Max retries (${maxRetryAttempts}) reached for Bus ${selectedBusIndex}. Giving up.`);
             }
         }
     };
 
     useEffect(() => {
-        addDebugMessage(`Component mounted for Bus ${selectedBusIndex}`);
-
         // Get user's location
         getUserLocation();
 
@@ -400,7 +323,7 @@ const Bus = () => {
 
         // Initial fetch to get the current location
         updateBusLocation().catch(err => {
-            addDebugMessage(`Initial fetch failed: ${err.message}`);
+            console.error(`Initial location fetch failed for Bus ${selectedBusIndex}:`, err.message);
             // If initial fetch fails, try again with backoff
             retryWithBackoff();
         });
@@ -417,12 +340,6 @@ const Bus = () => {
             <View style={styles.transitLineContainer}>
                 <View style={styles.transitHeader}>
                     <Text style={styles.transitLineTitle}>Live Location</Text>
-                    <TouchableOpacity
-                        onPress={() => setShowDebug(!showDebug)}
-                        style={styles.debugButton}
-                    >
-                        <Ionicons name="bug" size={18} color="white" />
-                    </TouchableOpacity>
                     <View style={styles.busNumberBadge}>
                         <Text style={styles.busNumberText}>{busInfo.title}</Text>
                     </View>
@@ -434,7 +351,7 @@ const Bus = () => {
                             <View style={styles.locationNameContainer}>
                                 <Text style={styles.locationName}>{busInfo.title || "Bus"}</Text>
                                 <Text style={styles.placeName} numberOfLines={2} ellipsizeMode="tail">
-                                    {currentLocationInfo.name || "Unknown location"}
+                                    {currentLocationInfo.name}
                                 </Text>
                             </View>
 
@@ -522,59 +439,6 @@ const Bus = () => {
         );
     };
 
-    // Debug panel component
-    const DebugPanel = () => {
-        if (!showDebug) return null;
-
-        return (
-            <View style={styles.debugPanel}>
-                <View style={styles.debugHeader}>
-                    <Text style={styles.debugTitle}>Debug Info</Text>
-                    <TouchableOpacity onPress={() => setShowDebug(false)}>
-                        <Ionicons name="close" size={20} color="white" />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.debugContent}>
-                    <Text style={styles.debugInfo}>Bus Location: {busLocation ?
-                        `${busLocation.latitude.toFixed(6)}, ${busLocation.longitude.toFixed(6)}` :
-                        'Not set'}</Text>
-
-                    <Text style={styles.debugInfo}>Path Points: {busPath.length}</Text>
-
-                    <Text style={styles.debugInfo}>Retry Count: {failureCount}</Text>
-
-                    <Text style={styles.debugSubtitle}>Recent Messages:</Text>
-                    {debugMessages.slice(0, 5).map(msg => (
-                        <Text key={msg.id} style={styles.debugMessage}>
-                            [{msg.time}] {msg.message}
-                        </Text>
-                    ))}
-
-                    <View style={styles.debugActions}>
-                        <TouchableOpacity
-                            style={styles.debugButton}
-                            onPress={() => {
-                                Alert.alert('Debug Actions', `Bus Location: ${busLocation ?
-                                    `${busLocation.latitude.toFixed(6)}, ${busLocation.longitude.toFixed(6)}` :
-                                    'Not set'}\n\nBus Path: ${busPath.length} points\n\nDebug Log: ${debugMessages.length} entries`);
-                            }}
-                        >
-                            <Text style={styles.debugButtonText}>Show Details</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.debugButton, { backgroundColor: '#4CAF50' }]}
-                            onPress={setDummyBusLocation}
-                        >
-                            <Text style={styles.debugButtonText}>Set Test Location</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
-        );
-    };
-
     if (loading && !busLocation) {
         return (
             <View style={styles.centered}>
@@ -586,12 +450,6 @@ const Bus = () => {
                         {failureCount >= 3 ? "\nStill trying to connect..." : ""}
                     </Text>
                 )}
-                <TouchableOpacity
-                    style={{ marginTop: 20, padding: 10 }}
-                    onPress={() => setDebugMessages([])}
-                >
-                    <Text>DEBUG: {debugMessages.length} messages</Text>
-                </TouchableOpacity>
             </View>
         );
     }
@@ -614,13 +472,6 @@ const Bus = () => {
                         <Text style={styles.retryButtonText}>Retry</Text>
                     </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity
-                    style={{ marginTop: 20, padding: 10, backgroundColor: '#333', borderRadius: 8 }}
-                    onPress={setDummyBusLocation}
-                >
-                    <Text style={{ color: 'white' }}>Use Test Location</Text>
-                </TouchableOpacity>
             </View>
         );
     }
@@ -682,7 +533,7 @@ const Bus = () => {
                                 longitude: userLocation.longitude,
                             }}
                             title="Your Location"
-                            description={userPlaceName || "You are here"}
+                            description="You are here"
                             pinColor="#1E88E5"
                         >
                             <View style={styles.userLocationMarker}>
@@ -702,47 +553,25 @@ const Bus = () => {
                     />
                 )}
 
-                {/* Standard Marker for bus location */}
+                {/* Bus Marker */}
                 <Marker
                     coordinate={{
                         latitude: busLocation.latitude,
                         longitude: busLocation.longitude,
                     }}
-                    title={busInfo.title}
-                    description={currentLocationInfo ? currentLocationInfo.name : busInfo.description}
-                    pinColor="#FF6F00" // Default pin in orange color
-                />
-
-                {/* Custom Bus Marker with direct styling (as fallback) */}
-                <Marker
-                    coordinate={{
-                        latitude: busLocation.latitude,
-                        longitude: busLocation.longitude,
-                    }}
-                    anchor={{ x: 0.5, y: 0.5 }}
                     title={busInfo.title}
                     description={currentLocationInfo ? currentLocationInfo.name : busInfo.description}
                 >
-                    <View style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 20,
-                        backgroundColor: '#FF6F00',
-                        borderWidth: 2,
-                        borderColor: 'white',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                    }}>
-                        <Ionicons name="bus" size={24} color="white" />
-                    </View>
+                    <Image
+                        source={require('../assets/images/bus-icon.png')}
+                        style={styles.busIcon}
+                        resizeMode="contain"
+                    />
                 </Marker>
             </MapView>
 
             {/* Transit Line View */}
             <TransitLineView />
-
-            {/* Debug Panel */}
-            <DebugPanel />
 
             {updating && (
                 <View style={[styles.updatingContainer, { top: error ? 70 : 10 }]}>
@@ -1046,75 +875,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
         color: '#333',
-    },
-    // Debug panel styles
-    debugButton: {
-        padding: 8,
-        marginHorizontal: 10,
-        borderRadius: 16,
-        backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    },
-    debugPanel: {
-        position: 'absolute',
-        left: 10,
-        right: 10,
-        bottom: 190, // Just above the transit line
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        borderRadius: 8,
-        padding: 10,
-        maxHeight: 300,
-        zIndex: 5,
-    },
-    debugHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.3)',
-        paddingBottom: 5,
-    },
-    debugTitle: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
-    debugContent: {
-        marginBottom: 10,
-    },
-    debugInfo: {
-        color: 'white',
-        fontSize: 12,
-        marginBottom: 5,
-    },
-    debugSubtitle: {
-        color: '#FF6F00',
-        fontSize: 12,
-        fontWeight: 'bold',
-        marginTop: 5,
-        marginBottom: 5,
-    },
-    debugMessage: {
-        color: 'rgba(255, 255, 255, 0.8)',
-        fontSize: 10,
-        marginBottom: 2,
-    },
-    debugActions: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 10,
-    },
-    debugButton: {
-        backgroundColor: '#FF6F00',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 4,
-    },
-    debugButtonText: {
-        color: 'white',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
+    }
 });
 
 export default Bus;
