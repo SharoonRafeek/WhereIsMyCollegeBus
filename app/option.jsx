@@ -46,7 +46,7 @@ const AuthScreen = () => {
     // Simulate API call and get token
     const token = 'dummy-auth-token';
     await storeAuthToken(token);
-    
+
     // Route based on verification status
     if (hasVerifiedPassId) {
       // User verified with Pass ID - go directly to bus pass
