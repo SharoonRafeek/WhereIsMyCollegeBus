@@ -181,6 +181,12 @@ const NavigationScreen = () => {
     handlePassIdGeneration();
   }, [userData]);
 
+  // Add a helper function to create a lighter version of the location color for the badge background
+  const getLighterColor = (hexColor) => {
+    // Create a light, transparent version of the color for the badge background
+    return hexColor + '20'; // Adding 20 for 12.5% opacity
+  };
+
   // Show loading indicator while checking auth and location data
   if (isLoading) {
     return (
@@ -205,6 +211,36 @@ const NavigationScreen = () => {
   // Determine passId to use
   const passId = userData?.locationData?.passId || generateRandomPassId();
   
+  // Get pass type from userData, default to "Daily Pass" if not specified
+  const passType = userData?.locationData?.passType || "Daily Pass";
+  
+  // Get location from userData
+  const location = userData?.locationData?.location || "Unknown";
+  
+  // Define a function to determine the background color based on location
+  const getLocationColor = (locationName) => {
+    // Map of specific locations to colors - using only the 4 locations from location.jsx
+    const locationColors = {
+      "Koyilandi": "#3498db",  // Blue
+      "Payyoli": "#2ecc71",    // Green
+      "Perambra": "#9b59b6",   // Purple
+      "Vadakara": "#e74c3c",   // Red
+    };
+    
+    // Look for exact match first
+    for (const key in locationColors) {
+      if (locationName.toLowerCase().includes(key.toLowerCase())) {
+        return locationColors[key];
+      }
+    }
+    
+    // If no match found, return the default color
+    return "#FF7200"; // Original orange
+  };
+  
+  // Get the color for this location
+  const locationColor = getLocationColor(location);
+  
   // QR code value with user ID for verification
   const qrValue = `student-bus-pass-${passId}-${auth.currentUser?.uid || "unknown"}`;
 
@@ -226,21 +262,21 @@ const NavigationScreen = () => {
 
         <View style={styles.ticketContainer}>
           <View style={styles.profileSection}>
-            {userData?.photoUrl ? (
+            {userData?.locationData?.photoUrl ? (
               <Image 
-                source={{ uri: userData.photoUrl }} 
-                style={styles.profileImage} 
+                source={{ uri: userData.locationData.photoUrl }} 
+                style={[styles.profileImage, { borderColor: locationColor }]}
                 resizeMode="cover"
               />
             ) : (
-              <View style={styles.profileImage} />
+              <View style={[styles.profileImage, { borderColor: locationColor }]} />
             )}
             <Text style={styles.name}>
               {userData?.fullName || auth.currentUser?.displayName || "Student"}
             </Text>
-            <View style={styles.statusBadge}>
-              <View style={[styles.statusDot, { backgroundColor: '#4FD1C5' }]} />
-              <Text style={styles.statusText}>Active</Text>
+            <View style={[styles.statusBadge, { backgroundColor: getLighterColor(locationColor) }]}>
+              <View style={[styles.statusDot, { backgroundColor: locationColor }]} />
+              <Text style={[styles.statusText, { color: locationColor }]}>Active</Text>
             </View>
           </View>
 
@@ -283,6 +319,13 @@ const NavigationScreen = () => {
             />
             <Text style={styles.qrTitle}>Scan to Verify</Text>
           </View>
+          
+          {/* Pass type bar with centered text only and location-based color */}
+          <View style={[styles.passTypeContainer, { backgroundColor: locationColor }]}>
+            <View style={styles.passTypeContent}>
+              <Text style={styles.passTypeValue}>{passType.toUpperCase()}</Text>
+            </View>
+          </View>
         </View>
       </SafeAreaView>
     </LinearGradient>
@@ -310,6 +353,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     // Add padding for iOS status bar if needed
     paddingTop: Platform.OS === 'ios' ? 5 : 0,
+    // Add bottom padding to prevent tab bar overlap
+    paddingBottom: Platform.OS === 'ios' ? 30 : 40,
+    justifyContent: 'center', // Center content vertically
   },
   headerContainer: {
     width: '100%',
@@ -356,6 +402,8 @@ const styles = StyleSheet.create({
     }),
     position: 'relative',
     overflow: 'visible',
+    // Add margin to move up from bottom tab bar
+    marginTop: -30,
   },
   profileSection: {
     alignItems: 'center',
@@ -366,8 +414,8 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 4,
-    borderColor: '#FF7200',
-    backgroundColor: 'transparent', // Make background transparent
+    // borderColor moved to inline style to be dynamic
+    backgroundColor: 'transparent',
     marginBottom: 15,
   },
   name: {
@@ -416,11 +464,30 @@ const styles = StyleSheet.create({
   qrSection: {
     alignItems: 'center',
     marginTop: 20,
+    marginBottom: 30, // Add space for pass type bar
   },
-  qrTitle: {
-    fontSize: 14,
-    color: '#718096', // Changed from #4A5568 to match other secondary text
-    marginTop: 10,
+  passTypeContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+    overflow: 'hidden',
+    borderBottomLeftRadius: 15,
+    borderBottomRightRadius: 15,
+    // backgroundColor will be set dynamically
+  },
+  passTypeContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  passTypeValue: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 18,
+    letterSpacing: 1.5,
+    textAlign: 'center',
   },
   perforatedWrapper: {
     flexDirection: 'row',
@@ -520,23 +587,23 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF1E6',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     marginBottom: 15,
+    // backgroundColor moved to inline style to be dynamic
   },
   statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     marginRight: 6,
-    backgroundColor: '#FF7200',
+    // backgroundColor moved to inline style to be dynamic
   },
   statusText: {
-    color: '#FF7200',
     fontSize: 14,
     fontWeight: '600',
+    // color moved to inline style to be dynamic
   },
   locationRow: {
     flexDirection: 'row',
