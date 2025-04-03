@@ -59,11 +59,12 @@ export default function LocationPage() {
       
       console.log('Location data saved to Firebase');
       
-      // Store auth token and navigate to home
+      // Store auth token
       const token = 'dummy-auth-token';
       await storeAuthToken(token);
       
-      router.push('/bus-pass');
+      // Redirect to payment page instead of bus-pass
+      router.push('/payment');
     } catch (error) {
       console.error('Error saving location data:', error);
       Alert.alert(

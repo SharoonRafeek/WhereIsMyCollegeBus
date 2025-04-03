@@ -73,6 +73,8 @@ const InfoHubScreen = () => {
                 month: 'short',
                 year: 'numeric'
               }) : "Not Found",
+            // Get photo URL from locationData.photo instead of directly from user data
+            photoURL: locationData.photoUrl || null,
           };
           
           setUserData(userProfile);
@@ -222,9 +224,9 @@ const InfoHubScreen = () => {
                     style={styles.profileImageGradient}
                   >
                     <View style={styles.profileImage}>
-                      {auth.currentUser?.photoURL ? (
+                      {userData?.photoURL ? (
                         <Image 
-                          source={{ uri: auth.currentUser.photoURL }} 
+                          source={{ uri: userData.photoURL }} 
                           style={{ width: '100%', height: '100%', borderRadius: 33 }}
                         />
                       ) : (
