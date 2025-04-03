@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, FlatList, Image, Keyboard, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Dimensions, FlatList, Image, Keyboard, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 export default function BusTrackingApp() {
   const router = useRouter();
@@ -11,6 +11,10 @@ export default function BusTrackingApp() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredBuses, setFilteredBuses] = useState([]);
   const [filteredPlaces, setFilteredPlaces] = useState([]);
+  const [adminModalVisible, setAdminModalVisible] = useState(false);
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   const handleBusCardPress = (busNumber) => {
     let apiIndex;
@@ -20,6 +24,18 @@ export default function BusTrackingApp() {
       pathname: '/bus',
       params: { busIndex: apiIndex }
     });
+  };
+
+  const handleAdminLogin = () => {
+    if (adminUsername === 'admin' && adminPassword === 'admin@321') {
+      setAdminModalVisible(false);
+      setAdminUsername('');
+      setAdminPassword('');
+      setLoginError('');
+      router.push('/admin');
+    } else {
+      setLoginError('Invalid username or password');
+    }
   };
 
   const busData = [
@@ -91,6 +107,12 @@ export default function BusTrackingApp() {
             </View>
             <View style={styles.rightHeader}>
               <TouchableOpacity 
+                style={[styles.iconBackground, {marginRight: 10}]}
+                onPress={() => setAdminModalVisible(true)}
+              >
+                <Ionicons name="shield-outline" size={28} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity 
                 style={styles.iconBackground}
                 onPress={() => router.push('/notification')}
               >
@@ -98,6 +120,53 @@ export default function BusTrackingApp() {
               </TouchableOpacity>
             </View>
           </View>
+          
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={adminModalVisible}
+            onRequestClose={() => setAdminModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Admin Login</Text>
+                
+                <TextInput
+                  style={styles.adminInput}
+                  placeholder="Username"
+                  value={adminUsername}
+                  onChangeText={setAdminUsername}
+                />
+                
+                <TextInput
+                  style={styles.adminInput}
+                  placeholder="Password"
+                  secureTextEntry
+                  value={adminPassword}
+                  onChangeText={setAdminPassword}
+                />
+                
+                {loginError ? <Text style={styles.errorText}>{loginError}</Text> : null}
+                
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity 
+                    style={[styles.modalButton, styles.cancelButton]} 
+                    onPress={() => setAdminModalVisible(false)}
+                  >
+                    <Text style={styles.buttonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.modalButton, styles.loginButton]} 
+                    onPress={handleAdminLogin}
+                  >
+                    <Text style={styles.buttonText}>Login</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+
           <Image
             source={require('../../assets/images/bg-bus.png')}
             style={styles.footerImage}
@@ -181,6 +250,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-end',
     marginRight: -22,
+    flexDirection: 'row',
   },
   searchBarContainer: {
     width: '100%',
@@ -318,5 +388,59 @@ const styles = StyleSheet.create({
   flatListContent: {
     flexGrow: 1,
     paddingBottom: 100, // Increase bottom padding for more scroll space
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#FFF',
+    borderRadius: 15,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  adminInput: {
+    width: '100%',
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#CCC',
+    borderRadius: 10,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  cancelButton: {
+    backgroundColor: '#CCC',
+  },
+  loginButton: {
+    backgroundColor: '#FF7200',
+  },
+  buttonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
   },
 });

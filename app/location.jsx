@@ -25,7 +25,7 @@ const locationPages = [
     options: ['S1-S2', 'S3-S4', 'S5-S6', 'S7-S8'], 
   },
   {
-    title: 'Upload Your Photo for Verification',
+    title: 'Upload Your Photo (Optional)',
     options: [],
   },
 ];
@@ -62,7 +62,7 @@ const LocationForm = ({ onLocationSubmit, currentPage, setCurrentPage }) => {
       }
     }
     
-    // For photo upload page, the check is already handled via button disabled state
+    // Photo upload is optional, so we don't need to validate it
     
     if (currentPage < locationPages.length - 1) {
       setCurrentPage(currentPage + 1);
@@ -290,13 +290,11 @@ const LocationForm = ({ onLocationSubmit, currentPage, setCurrentPage }) => {
         <TouchableOpacity 
           style={[
             styles.continueButton,
-            ((currentPage === 4 && !photo) || 
-             (currentPage < 4 && !selectedOptions[currentPage]) ||
+            ((currentPage < 4 && !selectedOptions[currentPage]) ||
              isSubmitting) && styles.disabledButton
           ]} 
           onPress={handleNext}
-          disabled={(currentPage === 4 && !photo) || 
-                   (currentPage < 4 && !selectedOptions[currentPage]) ||
+          disabled={(currentPage < 4 && !selectedOptions[currentPage]) ||
                    isSubmitting}
         >
           {isSubmitting && currentPage === locationPages.length - 1 ? (

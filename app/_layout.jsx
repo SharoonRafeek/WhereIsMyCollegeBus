@@ -31,6 +31,7 @@ export default function RootLayout() {
       <Stack.Screen name="signup" />
       <Stack.Screen name="locationPage" />
       <Stack.Screen name="upload" />
+      <Stack.Screen name="admin" options={{ headerShown: true, title: "Admin Panel" }} />
     </Stack>
   );
 }

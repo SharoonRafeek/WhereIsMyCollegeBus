@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -24,6 +24,63 @@ const PAYMENT_AMOUNT = 1; // Rs. 1
 export default function PaymentPage() {
   const router = useRouter();
   const [processing, setProcessing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userDataComplete, setUserDataComplete] = useState(false);
+  const [missingFields, setMissingFields] = useState([]);
+  
+  // Fetch user data on component mount to check if all required selections are complete
+  useEffect(() => {
+    const checkUserData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get current user
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          Alert.alert("Authentication Error", "Please sign in to continue.");
+          router.push('/login');
+          return;
+        }
+        
+        // Fetch user data from Firestore
+        const userDocRef = doc(firestore, "users", currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (!userDoc.exists()) {
+          setUserDataComplete(false);
+          setMissingFields(["All user information"]);
+          setLoading(false);
+          return;
+        }
+        
+        const userData = userDoc.data();
+        const locationData = userData.locationData || {};
+        
+        // Check if all required fields are present
+        const requiredFields = [
+          { field: locationData.location, name: "Location" },
+          { field: locationData.busService, name: "Bus Service" },
+          { field: locationData.branch, name: "Department/Branch" },
+          { field: locationData.semester, name: "Semester" },
+          { field: locationData.photoUrl, name: "Photo" }
+        ];
+        
+        const missing = requiredFields
+          .filter(item => !item.field)
+          .map(item => item.name);
+        
+        setMissingFields(missing);
+        setUserDataComplete(missing.length === 0);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error checking user data:', error);
+        setLoading(false);
+        setUserDataComplete(false);
+      }
+    };
+    
+    checkUserData();
+  }, []);
   
   // Handle back button press
   useEffect(() => {
@@ -138,7 +195,59 @@ export default function PaymentPage() {
       setProcessing(false);
     }
   };
+
+  const navigateToRequiredSection = () => {
+    // Redirect to the location page to complete the selections
+    router.push('/locationPage');
+  };
   
+  // Display a loading indicator while checking user data
+  if (loading) {
+    return (
+      <LinearGradient colors={['#FF7200', '#FF5C00']} style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={styles.loadingText}>Checking your information...</Text>
+        </View>
+      </LinearGradient>
+    );
+  }
+  
+  // Display a message if required user data is incomplete
+  if (!userDataComplete) {
+    return (
+      <LinearGradient colors={['#FF7200', '#FF5C00']} style={styles.container}>
+        <View style={styles.headerContainer}>
+          <Image source={logo} style={styles.logo} />
+        </View>
+        
+        <View style={styles.contentContainer}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <MaterialIcons name="arrow-back" size={24} color="#FF7200" />
+          </TouchableOpacity>
+          
+          <Text style={styles.title}>Complete Your Profile</Text>
+          <Text style={styles.subtitle}>Please complete all required information before proceeding to payment</Text>
+          
+          <View style={styles.missingInfoContainer}>
+            <Text style={styles.missingInfoTitle}>Missing Information:</Text>
+            {missingFields.map((field, index) => (
+              <Text key={index} style={styles.missingField}>• {field}</Text>
+            ))}
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.payButton}
+            onPress={navigateToRequiredSection}
+          >
+            <Text style={styles.payButtonText}>Complete My Information</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+    );
+  }
+  
+  // If all user data is complete, render the payment UI
   return (
     <LinearGradient colors={['#FF7200', '#FF5C00']} style={styles.container}>
       <View style={styles.headerContainer}>
@@ -284,5 +393,32 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  missingInfoContainer: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 30,
+  },
+  missingInfoTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  missingField: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 5,
   },
 });
