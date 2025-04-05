@@ -1,116 +1,11 @@
 import { Montserrat_400Regular, Montserrat_700Bold, useFonts } from '@expo-google-fonts/montserrat';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, FlatList, Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { firestore, withFirebaseRetry } from './firebaseConfig';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 
-const notifications = [
-  {
-    id: '1',
-    title: 'Upcoming Bus Schedules',
-    description: 'Stay updated with the latest bus schedules and changes. Buses will run as scheduled with no delays expected. Be sure to check the schedule for any changes.',
-    date: new Date(), // Current date and time
-    icon: 'directions-bus',
-  },
-  {
-    id: '2',
-    title: 'Bus Service Update',
-    description: 'There will be no bus service tomorrow due to scheduled maintenance. We apologize for the inconvenience and recommend using alternate transportation.',
-    date: new Date(Date.now() - 86400000), // Yesterday
-    icon: 'warning',
-  },
-  {
-    id: '3',
-    title: 'Fee Payment Due',
-    description: 'Your fee payment is due soon. Please make sure to complete your payment before the deadline to avoid any late fees.',
-    date: new Date(Date.now() - 2 * 86400000), // 2 days ago
-    icon: 'payment',
-  },
-  {
-    id: '4',
-    title: 'New Bus Routes Added',
-    description: 'We’ve added new bus routes to better serve you. Check the new routes and schedules available on our app.',
-    date: new Date(Date.now() - 3 * 86400000), // 3 days ago
-    icon: 'map',
-  },
-  {
-    id: '5',
-    title: 'Weather Alert',
-    description: 'Heavy rain expected tomorrow. Plan accordingly and ensure you are prepared for wet conditions during your travels to and from college.',
-    date: new Date(Date.now() - 4 * 86400000), // 4 days ago
-    icon: 'cloud',
-  },
-  {
-    id: '6',
-    title: 'Bus Pass Renewal Reminder',
-    description: 'Your bus pass is about to expire. Please renew your pass at the earliest to avoid any interruptions in your service.',
-    date: new Date(Date.now() - 5 * 86400000), // 5 days ago
-    icon: 'credit-card',
-  },
-  {
-    id: '7',
-    title: 'Maintenance Notification',
-    description: 'Routine maintenance will be carried out on all college buses this weekend. Expect minor delays and plan your travels accordingly.',
-    date: new Date(Date.now() - 6 * 86400000), // 6 days ago
-    icon: 'build',
-  },
-  {
-    id: '8',
-    title: 'Service Disruption',
-    description: 'Due to unforeseen circumstances, some bus services to the college are disrupted today. We are working to resolve the issue as quickly as possible.',
-    date: new Date(Date.now() - 7 * 86400000), // 7 days ago
-    icon: 'error',
-  },
-  {
-    id: '9',
-    title: 'Important Safety Reminder',
-    description: 'Remember to follow all safety protocols while traveling on the college bus. Your safety is our top priority.',
-    date: new Date(Date.now() - 8 * 86400000), // 8 days ago
-    icon: 'health-and-safety',
-  },
-  {
-    id: '10',
-    title: 'Bus Delay Alert',
-    description: 'Bus #5 is delayed by 15 minutes due to traffic. We apologize for the inconvenience and thank you for your patience.',
-    date: new Date(Date.now() - 9 * 86400000), // 9 days ago
-    icon: 'directions-bus',
-  },
-  {
-    id: '11',
-    title: 'New App Feature',
-    description: 'We have added a new feature to our app that allows you to track your college bus in real-time. Update your app to start using this feature.',
-    date: new Date(Date.now() - 10 * 86400000), // 10 days ago
-    icon: 'phone-android',
-  },
-  {
-    id: '12',
-    title: 'Lost and Found',
-    description: 'If you’ve lost an item on the college bus, please visit our lost and found department or contact us through the app.',
-    date: new Date(Date.now() - 11 * 86400000), // 11 days ago
-    icon: 'find-in-page',
-  },
-  {
-    id: '13',
-    title: 'Customer Satisfaction Survey',
-    description: 'We value your feedback! Please take a few minutes to complete our customer satisfaction survey and help us improve our bus services.',
-    date: new Date(Date.now() - 12 * 86400000), // 12 days ago
-    icon: 'feedback',
-  },
-  {
-    id: '14',
-    title: 'Service Update',
-    description: 'Our college bus service hours will be adjusted on the upcoming public holiday. Check our app for the updated schedule.',
-    date: new Date(Date.now() - 13 * 86400000), // 13 days ago
-    icon: 'update',
-  },
-  {
-    id: '15',
-    title: 'Holiday Season Schedule',
-    description: 'During the holiday season, our college bus schedules may vary. Please check our app for the latest updates and schedule changes.',
-    date: new Date(Date.now() - 14 * 86400000), // 14 days ago
-    icon: 'event',
-  },
-];
 const formatTime = (date) => {
   const now = new Date();
   const diffInDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
@@ -125,18 +20,71 @@ const formatTime = (date) => {
   }
 };
 
+const getIconNameByPriority = (priority) => {
+  switch (priority) {
+    case 'high':
+      return 'warning';
+    case 'urgent':
+      return 'error';
+    default:
+      return 'notifications';
+  }
+};
+
 const NotificationScreen = () => {
   let [fontsLoaded] = useFonts({
     Montserrat_400Regular,
     Montserrat_700Bold,
   });
 
+  const [adminNotifications, setAdminNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [error, setError] = useState(null);
 
-  if (!fontsLoaded) {
-    return <ActivityIndicator size={40} color="#0000ff" />
+  useEffect(() => {
+    fetchAdminNotifications();
+  }, []);
 
+  const fetchAdminNotifications = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const notificationsQuery = query(
+        collection(firestore, "notifications"),
+        orderBy("timestamp", "desc")
+      );
+      
+      const querySnapshot = await getDocs(notificationsQuery);
+      const notifications = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title,
+          description: data.message,
+          date: data.timestamp ? data.timestamp.toDate() : new Date(),
+          priority: data.priority || 'normal',
+          icon: getIconNameByPriority(data.priority)
+        };
+      });
+
+      setAdminNotifications(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      setError("Failed to load notifications. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!fontsLoaded || loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size={40} color="#FF7200" />
+      </View>
+    );
   }
 
   const handleNotificationPress = (notification) => {
@@ -151,7 +99,12 @@ const NotificationScreen = () => {
   const renderNotificationItem = ({ item }) => (
     <TouchableOpacity onPress={() => handleNotificationPress(item)}>
       <View style={styles.notificationItem}>
-        <View style={styles.iconContainer}>
+        <View style={[
+          styles.iconContainer, 
+          item.priority === 'high' ? styles.highPriorityIcon : 
+          item.priority === 'urgent' ? styles.urgentPriorityIcon : 
+          styles.normalPriorityIcon
+        ]}>
           <Icon name={item.icon} size={20} color="#FFFFFF" />
         </View>
         <View style={styles.notificationText}>
@@ -160,7 +113,9 @@ const NotificationScreen = () => {
             <Text style={styles.notificationTime}>{formatTime(item.date)}</Text>
           </View>
           <Text style={styles.notificationDescription}>
-            {item.description.slice(0, 50) + '...'}
+            {item.description && item.description.length > 50 
+              ? item.description.slice(0, 50) + '...' 
+              : item.description}
           </Text>
         </View>
       </View>
@@ -170,20 +125,28 @@ const NotificationScreen = () => {
   return (
     <View style={styles.container}>
       <LinearGradient 
-        colors={['#FF7200', '#FF5C00']} // Changed from ['#1A81FF', '#0D47A1']
+        colors={['#FF7200', '#FF5C00']}
         style={styles.header}
       >
         <Text style={styles.headerText}>Notifications</Text>
       </LinearGradient>
 
       <View style={styles.notificationContainer}>
-        <FlatList
-          data={notifications}
-          renderItem={renderNotificationItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.notificationList}
-          showsVerticalScrollIndicator={false}
-        />
+        {error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : adminNotifications.length === 0 ? (
+          <Text style={styles.noNotificationsText}>No notifications available</Text>
+        ) : (
+          <FlatList
+            data={adminNotifications}
+            renderItem={renderNotificationItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.notificationList}
+            showsVerticalScrollIndicator={false}
+            onRefresh={fetchAdminNotifications}
+            refreshing={loading}
+          />
+        )}
       </View>
 
       <Modal
@@ -198,8 +161,17 @@ const NotificationScreen = () => {
               <View style={styles.modalContent}>
                 {selectedNotification && (
                   <>
-                    <View style={styles.iconDetailsContainer}>
-                      <Icon name={selectedNotification.icon} size={50} color="#FF7200" /> // Changed from '#4B94F7'
+                    <View style={[
+                      styles.iconDetailsContainer,
+                      selectedNotification.priority === 'high' ? styles.highPriorityDetailIcon : 
+                      selectedNotification.priority === 'urgent' ? styles.urgentPriorityDetailIcon : 
+                      styles.normalPriorityDetailIcon
+                    ]}>
+                      <Icon name={selectedNotification.icon} size={50} color={
+                        selectedNotification.priority === 'high' ? '#FFA500' : 
+                        selectedNotification.priority === 'urgent' ? '#FF0000' : 
+                        '#FF7200'
+                      } />
                     </View>
                     <Text style={styles.modalTitle}>{selectedNotification.title}</Text>
                     <Text style={styles.modalDate}>{formatTime(selectedNotification.date)}</Text>
@@ -219,6 +191,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     height: 250,
@@ -259,10 +236,18 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#FF7200', // Changed from '#4B94F7'
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
+  },
+  normalPriorityIcon: {
+    backgroundColor: '#FF7200',
+  },
+  highPriorityIcon: {
+    backgroundColor: '#FFA500',
+  },
+  urgentPriorityIcon: {
+    backgroundColor: '#FF0000',
   },
   notificationText: {
     flex: 1,
@@ -299,7 +284,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     width: '90%',
@@ -317,10 +302,18 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FFF5F0', // Light orange background
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
+  },
+  normalPriorityDetailIcon: {
+    backgroundColor: '#FFF5F0',
+  },
+  highPriorityDetailIcon: {
+    backgroundColor: '#FFF6E6',
+  },
+  urgentPriorityDetailIcon: {
+    backgroundColor: '#FFF0F0',
   },
   modalTitle: {
     fontSize: 18,
@@ -336,8 +329,20 @@ const styles = StyleSheet.create({
   modalDescription: {
     color: '#666',
     fontFamily: 'Montserrat_400Regular',
-    textAlign: 'center', // Center-align text for better appearance
+    textAlign: 'center',
     marginTop: 10,
+  },
+  errorText: {
+    color: '#FF0000',
+    textAlign: 'center',
+    marginTop: 20,
+    fontFamily: 'Montserrat_400Regular',
+  },
+  noNotificationsText: {
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 20,
+    fontFamily: 'Montserrat_400Regular',
   },
 });
 

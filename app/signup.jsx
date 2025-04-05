@@ -1,7 +1,7 @@
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where } from 'firebase/firestore';
 import React, { useState } from 'react';
-import { Alert, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, Switch } from 'react-native';
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, Switch, Linking } from 'react-native';
 import { auth, firestore } from './firebaseConfig'; // Import auth & firestore
 
 const SignupForm = ({ onSwitchToLogin, onSignupSuccess, isProcessing = false }) => {
@@ -225,88 +225,61 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess, isProcessing = false }) 
     }
 
     try {
-      // Convert admission number to uppercase before checking
       const formattedAdmissionNumber = admissionNumber.toUpperCase();
-      console.log(`Formatted admission number: ${formattedAdmissionNumber}`);
 
-      // Perform check for existing account, but handle potential errors
-      let phoneExists = false;
-      let admissionExists = false;
-
-      try {
-        console.log('Checking if account already exists...');
-        // Check phone number and admission number separately to isolate issues
-        phoneExists = await checkExistingField('phoneNumber', phoneNumber);
-        console.log(`Phone exists result: ${phoneExists}`);
-
-        admissionExists = await checkExistingField('admissionNumber', formattedAdmissionNumber);
-        console.log(`Admission exists result: ${admissionExists}`);
-      } catch (checkError) {
-        console.error('Error checking existing fields:', checkError);
-        // Continue with signup even if the check fails
-      }
-
-      if (phoneExists || admissionExists) {
-        console.log('Account already exists');
-        Alert.alert(
-          "Error",
-          "Account already exists"
-        );
-        return;
-      }
-
-      // Then check if admission number exists in Firebase data collection
-      console.log('Checking if admission number exists in data collection...');
-      const userData = await checkAdmissionNumberInFirebase(admissionNumber);
-      if (userData) {
-        console.log('User found in data collection:', userData);
-        // User found in Firebase data, show pass ID verification
-        setFoundUserData(userData);
-        setShowPassIdVerification(true);
-        return;
-      }
-      console.log('No existing data found, proceeding with regular signup');
-
-      // Regular signup flow for users not in Firebase data
-      console.log('Creating user in Firebase Authentication...');
-      // Create user in Firebase Authentication
+      // Perform signup logic (e.g., Firebase user creation)
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      console.log('User created successfully with uid:', user.uid);
 
-      console.log('Storing user data in Firestore...');
-      // Store user data in Firestore with uppercase admission number
       const userDocRef = doc(firestore, 'users', user.uid);
       await setDoc(userDocRef, {
         uid: user.uid,
         fullName,
-        admissionNumber: formattedAdmissionNumber, // Store in uppercase
+        admissionNumber: formattedAdmissionNumber,
         email,
         phoneNumber,
         createdAt: new Date().toISOString()
       });
-      console.log('User data stored successfully in Firestore');
 
-      Alert.alert("Success", "User registered successfully!");
+      Alert.alert(
+        "Success", 
+        "User registered successfully! Now let's set up your location and other details.", 
+        [
+          {
+            text: "Continue",
+            onPress: () => {
+              // Navigate to location page for setup
+              onSignupSuccess(fullName, email, password);
+            }
+          }
+        ]
+      );
+
+      // Reset form fields
       setFullName("");
       setAdmissionNumber("");
       setEmail("");
       setPhoneNumber("");
       setPassword("");
-
-      console.log('Navigating to location page...');
-      // Call the onSignupSuccess prop which now navigates to the location page
-      onSignupSuccess(fullName, email, password);
     } catch (error) {
       console.error('Signup error:', error);
-      // Handle specific Firebase Auth errors
-      if (error.code === 'auth/email-already-in-use') {
-        Alert.alert("Error", "Email address is already in use by another account.");
-      } else {
-        Alert.alert("Error", error.message);
-      }
+      Alert.alert("Error", error.message);
     }
   };
+
+  const FeePaymentButton = () => (
+    <TouchableOpacity
+      style={[styles.button, isProcessing && styles.disabledButton]}
+      onPress={() => {
+        // Redirect to Google Pay
+        const upiUrl = `upi://pay?pa=sharoorafeek@oksbi&pn=College Bus Service&mc=0000&tid=1234567890&tr=1234567890&tn=Fee Payment&am=100&cu=INR`;
+        Linking.openURL(upiUrl).catch((err) => console.error('Error opening UPI URL:', err));
+      }}
+      disabled={isProcessing}
+    >
+      <Text style={styles.buttonText}>Pay Fee</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
@@ -337,6 +310,7 @@ const SignupForm = ({ onSwitchToLogin, onSignupSuccess, isProcessing = false }) 
                 isProcessing={isProcessing}
               />
             )}
+            <FeePaymentButton />
           </View>
         </View>
       </TouchableWithoutFeedback>
@@ -455,7 +429,7 @@ const FormContent = ({
       disabled={isProcessing}
     >
       <Text style={styles.buttonText}>
-        {hasVerifiedPassId ? "Sign Up" : "Sign Up & Continue to Payment"}
+        {hasVerifiedPassId ? "Sign Up" : "Sign Up"}
       </Text>
     </TouchableOpacity>
     <TouchableOpacity onPress={onSwitchToLogin} disabled={isProcessing}>

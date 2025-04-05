@@ -314,8 +314,9 @@ const NavigationScreen = () => {
             <QRCode 
               value={qrValue}
               size={100}
-              backgroundColor='white'
+              backgroundColor="#FFFFFF"
               color="#2D3748"
+              logoBackgroundColor="#FFFFFF"
             />
             <Text style={styles.qrTitle}>Scan to Verify</Text>
           </View>

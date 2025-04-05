@@ -158,9 +158,10 @@ const AuthScreen = () => {
       await storeAuthToken(token);
       router.push('/(tabs)/bus-pass');
     } else {
-      // Unverified user - redirect to Google Pay for payment
-      redirectToGooglePay(userData);
-      // Note: Further navigation happens in the redirectToGooglePay function
+      // For regular signups, direct to location page for setting up
+      const token = 'dummy-auth-token';
+      await storeAuthToken(token);
+      router.push('/locationPage');
     }
   };
 

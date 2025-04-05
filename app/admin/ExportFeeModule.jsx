@@ -5,8 +5,9 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { supabase } from '../../utils/supabase';
 import * as Network from 'expo-network';
+import { firestore, withFirebaseRetry, addConnectionStateListener, checkFirebaseConnection } from '../firebaseConfig';
+import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 
 export default function ExportFeeModule() {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,6 +20,32 @@ export default function ExportFeeModule() {
   const [totalAmount, setTotalAmount] = useState(0);
   const [totalDiscounts, setTotalDiscounts] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
+  const [connectionError, setConnectionError] = useState(null);
+
+  // Monitor Firebase connection state
+  useEffect(() => {
+    const unsubscribe = addConnectionStateListener((connected) => {
+      setIsConnected(connected);
+      if (!connected) {
+        setConnectionError("You are offline. Some features may be limited.");
+      } else {
+        setConnectionError(null);
+      }
+    });
+
+    // Initial connection check
+    checkFirebaseConnection().then(result => {
+      setIsConnected(result.connected);
+      if (!result.connected) {
+        setConnectionError("No internet connection. Limited functionality available.");
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   // Load fee data when component mounts or filter changes
   useEffect(() => {
@@ -31,57 +58,98 @@ export default function ExportFeeModule() {
   }, [feeData]);
 
   const fetchFeeData = async () => {
+    if (!isConnected) {
+      setConnectionError("You are offline. Cannot fetch fee data.");
+      return;
+    }
+
     try {
       setIsLoading(true);
+      setConnectionError(null);
       
-      // Check network connectivity first
-      const networkState = await Network.getNetworkStateAsync();
-      if (!networkState.isConnected || !networkState.isInternetReachable) {
-        throw new Error('No internet connection. Please check your network and try again.');
-      }
-      
-      let query = supabase
-        .from('fee_payments')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Create a query to the fee_payments collection
+      const feePaymentsRef = collection(firestore, 'fee_payments');
+      let feeQuery;
       
       // Apply date filters based on selected period
       if (filterPeriod === 'today') {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        query = query.gte('payment_date', today.toISOString());
+        const startOfDay = Timestamp.fromDate(today);
+        const endOfDay = Timestamp.fromDate(new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1));
+        
+        feeQuery = query(
+          feePaymentsRef,
+          where('payment_date', '>=', startOfDay),
+          where('payment_date', '<=', endOfDay),
+          orderBy('payment_date', 'desc')
+        );
       } else if (filterPeriod === 'thisWeek') {
         const weekStart = new Date();
         weekStart.setDate(weekStart.getDate() - weekStart.getDay());
         weekStart.setHours(0, 0, 0, 0);
-        query = query.gte('payment_date', weekStart.toISOString());
+        const startOfWeek = Timestamp.fromDate(weekStart);
+        
+        feeQuery = query(
+          feePaymentsRef,
+          where('payment_date', '>=', startOfWeek),
+          orderBy('payment_date', 'desc')
+        );
       } else if (filterPeriod === 'thisMonth') {
         const monthStart = new Date();
         monthStart.setDate(1);
         monthStart.setHours(0, 0, 0, 0);
-        query = query.gte('payment_date', monthStart.toISOString());
+        const startOfMonth = Timestamp.fromDate(monthStart);
+        
+        feeQuery = query(
+          feePaymentsRef,
+          where('payment_date', '>=', startOfMonth),
+          orderBy('payment_date', 'desc')
+        );
       } else if (filterPeriod === 'custom') {
         const startDate = new Date(dateFrom);
         startDate.setHours(0, 0, 0, 0);
-        
         const endDate = new Date(dateTo);
         endDate.setHours(23, 59, 59, 999);
         
-        query = query
-          .gte('payment_date', startDate.toISOString())
-          .lte('payment_date', endDate.toISOString());
+        const startTimestamp = Timestamp.fromDate(startDate);
+        const endTimestamp = Timestamp.fromDate(endDate);
+        
+        feeQuery = query(
+          feePaymentsRef,
+          where('payment_date', '>=', startTimestamp),
+          where('payment_date', '<=', endTimestamp),
+          orderBy('payment_date', 'desc')
+        );
+      } else {
+        // 'all' - fetch all records
+        feeQuery = query(
+          feePaymentsRef,
+          orderBy('payment_date', 'desc')
+        );
       }
       
-      console.log('Attempting to fetch fee data...');
-      const { data, error } = await query;
+      // Execute the query with retry mechanism
+      const querySnapshot = await withFirebaseRetry(() => getDocs(feeQuery));
       
-      if (error) {
-        console.error('Supabase query error:', error);
-        throw error;
-      }
+      // Transform data
+      const data = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        
+        // Convert Firestore Timestamps to JS Dates for display
+        const payment_date = data.payment_date ? data.payment_date.toDate() : new Date();
+        const created_at = data.created_at ? data.created_at.toDate() : new Date();
+        
+        return {
+          id: doc.id,
+          ...data,
+          payment_date,
+          created_at
+        };
+      });
       
-      console.log(`Retrieved ${data ? data.length : 0} fee records`);
-      setFeeData(data || []);
+      console.log(`Retrieved ${data.length} fee records`);
+      setFeeData(data);
       
     } catch (error) {
       console.error('Fee data fetch error:', error);
@@ -92,6 +160,8 @@ export default function ExportFeeModule() {
       } else if (error.code) {
         errorMessage += ` (Error code: ${error.code})`;
       }
+      
+      setConnectionError(errorMessage);
       
       Alert.alert(
         'Connection Error', 
@@ -113,8 +183,8 @@ export default function ExportFeeModule() {
   };
 
   const calculateTotals = () => {
-    const totalAmountSum = feeData.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const totalDiscountsSum = feeData.reduce((sum, item) => sum + (item.discount || 0), 0);
+    const totalAmountSum = feeData.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    const totalDiscountsSum = feeData.reduce((sum, item) => sum + (parseFloat(item.discount) || 0), 0);
     
     setTotalAmount(totalAmountSum);
     setTotalDiscounts(totalDiscountsSum);
@@ -123,6 +193,11 @@ export default function ExportFeeModule() {
   const handleExport = async () => {
     if (feeData.length === 0) {
       Alert.alert('No Data', 'There is no fee data to export');
+      return;
+    }
+    
+    if (!isConnected) {
+      Alert.alert('Offline', 'You need to be online to export data');
       return;
     }
     
@@ -239,7 +314,7 @@ export default function ExportFeeModule() {
             <Text style={styles.amountValue}>₹{item.amount}</Text>
           </View>
           
-          {item.discount > 0 && (
+          {parseFloat(item.discount) > 0 && (
             <View style={styles.amountItem}>
               <Text style={styles.amountLabel}>Discount</Text>
               <Text style={styles.discountValue}>-₹{item.discount}</Text>
@@ -248,7 +323,7 @@ export default function ExportFeeModule() {
           
           <View style={styles.amountItem}>
             <Text style={styles.amountLabel}>Net</Text>
-            <Text style={styles.netAmountValue}>₹{item.amount - (item.discount || 0)}</Text>
+            <Text style={styles.netAmountValue}>₹{parseFloat(item.amount) - (parseFloat(item.discount) || 0)}</Text>
           </View>
         </View>
         
@@ -264,6 +339,25 @@ export default function ExportFeeModule() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
+      {/* Connection Status Banner */}
+      {!isConnected && (
+        <View style={styles.connectionBanner}>
+          <Ionicons name="cloud-offline-outline" size={16} color="#fff" />
+          <Text style={styles.connectionBannerText}>
+            You are offline. Fee operations require an internet connection.
+          </Text>
+        </View>
+      )}
+      
+      {connectionError && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="warning-outline" size={16} color="#fff" />
+          <Text style={styles.connectionBannerText}>
+            {connectionError}
+          </Text>
+        </View>
+      )}
+      
       <View style={styles.filterSection}>
         <Text style={styles.sectionTitle}>Export Fee Details</Text>
         
@@ -274,6 +368,7 @@ export default function ExportFeeModule() {
               selectedValue={filterPeriod}
               onValueChange={(itemValue) => setFilterPeriod(itemValue)}
               style={styles.picker}
+              enabled={isConnected}
             >
               <Picker.Item label="All Time" value="all" />
               <Picker.Item label="Today" value="today" />
@@ -291,18 +386,31 @@ export default function ExportFeeModule() {
               <TouchableOpacity
                 style={styles.datePickerButton}
                 onPress={() => setShowFromDatePicker(true)}
+                disabled={!isConnected}
               >
                 <Text>{dateFrom.toLocaleDateString()}</Text>
                 <Ionicons name="calendar-outline" size={20} color="#555" />
               </TouchableOpacity>
               
-              {showFromDatePicker && (
+              {showFromDatePicker && Platform.OS === 'android' && (
                 <DateTimePicker
                   testID="dateFromPicker"
                   value={dateFrom}
                   mode="date"
                   is24Hour={true}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display="default"
+                  onChange={handleDateFromChange}
+                  maximumDate={dateTo}
+                />
+              )}
+              
+              {Platform.OS === 'ios' && showFromDatePicker && (
+                <DateTimePicker
+                  testID="dateFromPickerIOS"
+                  value={dateFrom}
+                  mode="date"
+                  is24Hour={true}
+                  display="spinner"
                   onChange={handleDateFromChange}
                   maximumDate={dateTo}
                 />
@@ -314,18 +422,32 @@ export default function ExportFeeModule() {
               <TouchableOpacity
                 style={styles.datePickerButton}
                 onPress={() => setShowToDatePicker(true)}
+                disabled={!isConnected}
               >
                 <Text>{dateTo.toLocaleDateString()}</Text>
                 <Ionicons name="calendar-outline" size={20} color="#555" />
               </TouchableOpacity>
               
-              {showToDatePicker && (
+              {showToDatePicker && Platform.OS === 'android' && (
                 <DateTimePicker
                   testID="dateToPicker"
                   value={dateTo}
                   mode="date"
                   is24Hour={true}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display="default"
+                  onChange={handleDateToChange}
+                  minimumDate={dateFrom}
+                  maximumDate={new Date()}
+                />
+              )}
+              
+              {Platform.OS === 'ios' && showToDatePicker && (
+                <DateTimePicker
+                  testID="dateToPickerIOS"
+                  value={dateTo}
+                  mode="date"
+                  is24Hour={true}
+                  display="spinner"
                   onChange={handleDateToChange}
                   minimumDate={dateFrom}
                   maximumDate={new Date()}
@@ -359,9 +481,12 @@ export default function ExportFeeModule() {
       </View>
       
       <TouchableOpacity
-        style={styles.exportButton}
+        style={[
+          styles.exportButton,
+          (!isConnected || isExporting || feeData.length === 0) && styles.disabledButton
+        ]}
         onPress={handleExport}
-        disabled={isExporting || feeData.length === 0}
+        disabled={!isConnected || isExporting || feeData.length === 0}
       >
         {isExporting ? (
           <ActivityIndicator size="small" color="#fff" />
@@ -382,10 +507,12 @@ export default function ExportFeeModule() {
           <FlatList
             data={feeData}
             renderItem={renderFeeItem}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item) => item.id}
             contentContainerStyle={styles.feeList}
             ListEmptyComponent={
-              <Text style={styles.emptyListText}>No fee payment records found</Text>
+              <Text style={styles.emptyListText}>
+                {connectionError ? 'Connection error. Please check your internet connection.' : 'No fee payment records found'}
+              </Text>
             }
           />
         )}
@@ -399,6 +526,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f9f9f9',
     padding: 16,
+  },
+  connectionBanner: {
+    backgroundColor: '#2196F3',
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    borderRadius: 5,
+  },
+  errorBanner: {
+    backgroundColor: '#F44336',
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    borderRadius: 5,
+  },
+  connectionBannerText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 14,
   },
   filterSection: {
     backgroundColor: '#fff',
@@ -503,6 +653,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  disabledButton: {
+    backgroundColor: '#cccccc',
+    opacity: 0.7,
   },
   exportButtonText: {
     color: '#fff',

@@ -52,7 +52,7 @@ export default function LocationPage() {
         photoUrl: locationData.photo || '',
         updatedAt: new Date().toISOString()
       };
-
+      
       // Save data to Firestore under the current user's ID
       const userDocRef = doc(firestore, "users", currentUser.uid);
       await setDoc(userDocRef, { locationData: userData }, { merge: true });
@@ -63,8 +63,17 @@ export default function LocationPage() {
       const token = 'dummy-auth-token';
       await storeAuthToken(token);
       
-      // Redirect to payment page instead of bus-pass
-      router.push('/payment');
+      // After successfully saving location data, show success message and redirect to payment
+      Alert.alert(
+        "Success", 
+        "Your location information has been saved successfully. Now you can proceed to payment.", 
+        [
+          {
+            text: "Continue to Payment",
+            onPress: () => router.push('/payment')
+          }
+        ]
+      );
     } catch (error) {
       console.error('Error saving location data:', error);
       Alert.alert(

@@ -18,8 +18,19 @@ import {
 import logo from '../assets/images/raah.png';
 import { auth, firestore } from './firebaseConfig';
 
-// Fixed payment amount
-const PAYMENT_AMOUNT = 1; // Rs. 1
+// Define semester-based fee amounts
+const FEE_STRUCTURE = {
+  'Semester 1': { term1: 1, term2: 1, total: 2 },
+  'Semester 2': { term1: 1, term2: 1, total: 2 },
+  'Semester 3': { term1: 1, term2: 1, total: 2 },
+  'Semester 4': { term1: 1, term2: 1, total: 2 },
+  'Semester 5': { term1: 1, term2: 1, total: 2 },
+  'Semester 6': { term1: 1, term2: 1, total: 2 },
+  'Semester 7': { term1: 1, term2: 1, total: 2 },
+  'Semester 8': { term1: 1, term2: 1, total: 2 },
+  // Default fees if semester not found
+  'default': { term1: 1, term2: 1, total: 2 }
+};
 
 export default function PaymentPage() {
   const router = useRouter();
@@ -27,6 +38,9 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true);
   const [userDataComplete, setUserDataComplete] = useState(false);
   const [missingFields, setMissingFields] = useState([]);
+  const [feeAmount, setFeeAmount] = useState({ term1: 0, term2: 0, total: 0 });
+  const [userData, setUserData] = useState(null);
+  const [selectedTerm, setSelectedTerm] = useState('term1');
   
   // Fetch user data on component mount to check if all required selections are complete
   useEffect(() => {
@@ -54,6 +68,7 @@ export default function PaymentPage() {
         }
         
         const userData = userDoc.data();
+        setUserData(userData);
         const locationData = userData.locationData || {};
         
         // Check if all required fields are present
@@ -71,6 +86,14 @@ export default function PaymentPage() {
         
         setMissingFields(missing);
         setUserDataComplete(missing.length === 0);
+        
+        // If user data is complete, calculate fee amount based on semester
+        if (missing.length === 0) {
+          const semesterKey = locationData.semester || 'default';
+          const fees = FEE_STRUCTURE[semesterKey] || FEE_STRUCTURE['default'];
+          setFeeAmount(fees);
+        }
+        
         setLoading(false);
       } catch (error) {
         console.error('Error checking user data:', error);
@@ -105,14 +128,17 @@ export default function PaymentPage() {
         return;
       }
       
+      // Calculate payment amount based on selected term
+      const paymentAmount = selectedTerm === 'term1' ? feeAmount.term1 : feeAmount.term2;
+      
       // In a real app, you would generate a proper Google Pay deep link with your merchant details
       // For demonstration purposes, we're using a simulated approach
       
       // Sample UPI ID - replace with your actual UPI ID in a real app
       const upiId = 'sharoonrafeek@oksbi';
       const merchantName = 'College Bus Service';
-      const transactionNote = 'Bus Pass Payment';
-      const amount = PAYMENT_AMOUNT.toString();
+      const transactionNote = `Bus Pass Payment - ${selectedTerm === 'term1' ? 'Term 1' : 'Term 2'}`;
+      const amount = paymentAmount.toString();
       
       // Build Google Pay URI
       let googlePayUrl;
@@ -135,7 +161,7 @@ export default function PaymentPage() {
         // In a real app, you would wait for a callback from Google Pay
         // For this demo, we'll simulate a successful payment after a delay
         setTimeout(() => {
-          handlePaymentComplete();
+          handlePaymentComplete(paymentAmount);
         }, 3000);
       } else {
         // Google Pay not available, show fallback or error
@@ -160,31 +186,54 @@ export default function PaymentPage() {
     }
   };
   
-  const handlePaymentComplete = async () => {
+  const handlePaymentComplete = async (paymentAmount) => {
     try {
       // Get current user
       const currentUser = auth.currentUser;
       if (!currentUser) return;
       
+      const currentDate = new Date().toISOString();
+      
+      // Prepare fee data to save
+      let feeData = {};
+      
+      if (selectedTerm === 'term1') {
+        feeData = {
+          term1_amount: paymentAmount,
+          term1_date: currentDate,
+          term1_receipt: `T1-${Date.now()}`,
+          total_fee: feeAmount.total,
+        };
+      } else {
+        feeData = {
+          term2_amount: paymentAmount,
+          term2_date: currentDate,
+          term2_receipt: `T2-${Date.now()}`,
+          total_fee: feeAmount.total,
+        };
+      }
+      
       // Save payment info to Firestore
       const userDocRef = doc(firestore, "users", currentUser.uid);
       await updateDoc(userDocRef, {
+        ...feeData,
         payment: {
-          amount: PAYMENT_AMOUNT,
-          date: new Date().toISOString(),
+          amount: paymentAmount,
+          date: currentDate,
           method: 'Google Pay',
-          status: 'completed'
+          status: 'completed',
+          term: selectedTerm === 'term1' ? 'Term 1' : 'Term 2'
         }
       });
       
-      // Show success and navigate to bus pass
+      // Show success and navigate to fee page to show payment details
       Alert.alert(
         "Payment Successful",
         "Your bus pass has been activated!",
         [
           { 
-            text: "View Bus Pass", 
-            onPress: () => router.push('/(tabs)/bus-pass')
+            text: "View Fee Details", 
+            onPress: () => router.push('/fee')
           }
         ]
       );
@@ -193,12 +242,20 @@ export default function PaymentPage() {
     } catch (error) {
       console.error('Error updating payment status:', error);
       setProcessing(false);
+      Alert.alert(
+        "Payment Update Failed", 
+        "Your payment was processed but we couldn't update your records. Please contact support."
+      );
     }
   };
 
   const navigateToRequiredSection = () => {
     // Redirect to the location page to complete the selections
     router.push('/locationPage');
+  };
+  
+  const toggleTerm = () => {
+    setSelectedTerm(selectedTerm === 'term1' ? 'term2' : 'term1');
   };
   
   // Display a loading indicator while checking user data
@@ -260,43 +317,78 @@ export default function PaymentPage() {
         </TouchableOpacity>
         
         <Text style={styles.title}>Bus Pass Payment</Text>
-        <Text style={styles.subtitle}>Pay ₹{PAYMENT_AMOUNT} to activate your bus pass</Text>
         
-        <View style={styles.paymentSummary}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Pass Fee:</Text>
-            <Text style={styles.summaryValue}>₹{PAYMENT_AMOUNT}</Text>
+        <View style={styles.feeDetailsContainer}>
+          <Text style={styles.feeDetailsTitle}>Fee Details:</Text>
+          
+          <View style={styles.termToggleContainer}>
+            <TouchableOpacity 
+              style={[
+                styles.termToggleButton, 
+                selectedTerm === 'term1' && styles.termToggleButtonActive
+              ]}
+              onPress={() => setSelectedTerm('term1')}
+            >
+              <Text style={[
+                styles.termToggleText,
+                selectedTerm === 'term1' && styles.termToggleTextActive
+              ]}>Term 1</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.termToggleButton, 
+                selectedTerm === 'term2' && styles.termToggleButtonActive
+              ]}
+              onPress={() => setSelectedTerm('term2')}
+            >
+              <Text style={[
+                styles.termToggleText,
+                selectedTerm === 'term2' && styles.termToggleTextActive
+              ]}>Term 2</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Payment Method:</Text>
-            <Text style={styles.summaryValue}>Google Pay</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>Total:</Text>
-            <Text style={styles.totalValue}>₹{PAYMENT_AMOUNT}</Text>
+          
+          <View style={styles.feeSummary}>
+            <Text style={styles.feeSummaryTitle}>Payment Summary</Text>
+            
+            <View style={styles.feeDetailRow}>
+              <Text style={styles.feeDetailLabel}>Bus Fee:</Text>
+              <Text style={styles.feeDetailValue}>₹{selectedTerm === 'term1' ? feeAmount.term1 : feeAmount.term2}</Text>
+            </View>
+            
+            <View style={styles.divider} />
+            
+            <View style={styles.feeDetailRow}>
+              <Text style={styles.feeDetailTotal}>Total:</Text>
+              <Text style={styles.feeDetailTotalValue}>₹{selectedTerm === 'term1' ? feeAmount.term1 : feeAmount.term2}</Text>
+            </View>
           </View>
         </View>
         
-        <View style={styles.googlePayContainer}>
-          <Image 
-            source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Google_Pay_Logo_%282020%29.svg/512px-Google_Pay_Logo_%282020%29.svg.png' }} 
-            style={styles.googlePayLogo}
-            resizeMode="contain"
-          />
+        <View style={styles.paymentMethodContainer}>
+          <Text style={styles.paymentMethodTitle}>Payment Method</Text>
+          
+          <View style={styles.googlePayOptionContainer}>
+            <Image 
+              source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Google_Pay_Logo_%282020%29.svg/512px-Google_Pay_Logo_%282020%29.svg.png' }} 
+              style={styles.googlePayLogo}
+              resizeMode="contain"
+            />
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.payButton}
+            onPress={initiateGooglePayPayment}
+            disabled={processing}
+          >
+            {processing ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.payButtonText}>Pay with Google Pay</Text>
+            )}
+          </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity 
-          style={styles.payButton}
-          onPress={initiateGooglePayPayment}
-          disabled={processing}
-        >
-          {processing ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Text style={styles.payButtonText}>Pay with Google Pay</Text>
-          )}
-        </TouchableOpacity>
       </View>
     </LinearGradient>
   );
@@ -337,24 +429,62 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#777',
+    marginBottom: 20,
+  },
+  termToggleContainer: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 25,
+    padding: 5,
+  },
+  termToggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 20,
+  },
+  termToggleButtonActive: {
+    backgroundColor: '#FF7200',
+  },
+  termToggleText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#777',
+  },
+  termToggleTextActive: {
+    color: '#FFFFFF',
+  },
+  feeDetailsContainer: {
     marginBottom: 30,
   },
-  paymentSummary: {
+  feeDetailsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  feeSummary: {
     backgroundColor: '#F8F8F8',
     borderRadius: 12,
     padding: 20,
-    marginBottom: 30,
   },
-  summaryRow: {
+  feeSummaryTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  feeDetailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  summaryLabel: {
+  feeDetailLabel: {
     fontSize: 16,
     color: '#555',
   },
-  summaryValue: {
+  feeDetailValue: {
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
@@ -364,17 +494,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#DDD',
     marginVertical: 12,
   },
-  totalLabel: {
+  feeDetailTotal: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
   },
-  totalValue: {
+  feeDetailTotalValue: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FF7200',
   },
-  googlePayContainer: {
+  paymentMethodContainer: {
+    marginTop: 20,
+  },
+  paymentMethodTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  googlePayOptionContainer: {
     alignItems: 'center',
     marginVertical: 20,
   },
